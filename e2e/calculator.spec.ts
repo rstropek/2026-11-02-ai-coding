@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import packageJson from "../package.json";
 
 test("adds two numbers on the start page", async ({ page }) => {
   await page.goto("/");
@@ -13,9 +14,12 @@ test("adds two numbers on the start page", async ({ page }) => {
   await expect(page.getByRole("status")).toHaveText("Summe: 42");
 });
 
-test("health endpoint reports ok", async ({ request }) => {
+test("health endpoint reports ok and the app version", async ({ request }) => {
   const response = await request.get("/api/health");
 
   expect(response.ok()).toBe(true);
-  expect(await response.json()).toEqual({ status: "ok" });
+  expect(await response.json()).toEqual({
+    status: "ok",
+    version: packageJson.version,
+  });
 });

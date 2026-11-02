@@ -1,0 +1,39 @@
+# QA for feature branches: runs on every push to a branch other than main.
+# main has its own pipeline (main.yml) that also builds and deploys.
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qa:
+    name: QA
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The version guard compares against origin/main.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint, typecheck, unit and component tests
+        run: npm run check
+
+      - name: Version is bumped above main
+        run: npm run check:version

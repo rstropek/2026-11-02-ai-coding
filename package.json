@@ -1,6 +1,6 @@
 {
   "name": "license-management",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -14,7 +14,8 @@
     "test:e2e": "playwright test",
     "check": "npm run lint && npm run typecheck && npm run test",
     "format": "biome format --write",
-    "postbuild": "node scripts/copy-standalone-assets.mjs"
+    "postbuild": "node scripts/copy-standalone-assets.mjs",
+    "check:version": "node scripts/check-version-bump.mjs"
   },
   "dependencies": {
     "next": "16.4.4",

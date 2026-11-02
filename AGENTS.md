@@ -23,11 +23,13 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Unit + component tests                                     | `npm test` (single file: `npx vitest run <path>`) |
 | E2E tests (builds and starts the app on port 3100)         | `npm run test:e2e`                                |
 | Lint + typecheck + unit/component tests                    | `npm run check`                                   |
+| Version is above `origin/main` (run `git fetch` first)     | `npm run check:version`                           |
 | Docker image                                               | `docker build -t license-management .`            |
 
 ## Rules
 
 - Definition of done for every session: `npm run check` and `npm run test:e2e` pass with zero errors **and zero warnings**. `npm run lint` fails on Biome warnings; also resolve any Biome infos and build/test warnings, which are not enforced automatically.
+- Every feature branch bumps the patch version exactly once with `npm version patch --no-git-tag-version`. If `main` has reached the same version (e.g. after a rebase), bump again. CI enforces this with `npm run check:version`.
 - Every commit references a GitHub issue (e.g. `Refs #12`) that describes what the change does functionally and why.
 - Never commit to `main`. Work on a feature branch (`feature/<issue#>-<slug>`) and push it to origin. Don't open pull requests, and don't merge into `main` unless asked. After merging, delete the branch locally and on origin.
 - Code, comments, and technical docs are in English. The UI is German (i18n is out of scope for now).

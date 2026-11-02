@@ -36,6 +36,7 @@ npm run dev                       # http://localhost:3000
 
 ```bash
 npm run check      # Biome + TypeScript + unit/component tests
+npm run check:version  # version in package.json is greater than on origin/main
 npm run test:e2e   # Playwright against a production build (port 3100)
 npm run build      # production build into .next/standalone
 npm run start      # serve the production build
@@ -46,11 +47,12 @@ npm run start      # serve the production build
 ```
 src/
   app/              Next.js routes (pages, layouts, API route handlers)
-    api/health/     liveness endpoint used by the Docker HEALTHCHECK
+    api/health/     liveness endpoint, reports the app version
   components/       React components (tests next to them: *.test.tsx)
   lib/              framework-independent logic (tests next to it: *.test.ts)
 e2e/                Playwright end-to-end tests
-scripts/            build helper scripts
+scripts/            build and CI helper scripts
+.github/workflows/  GitHub Actions pipelines
 specs/              dated requirement snapshots (historical, not maintained)
 ```
 
@@ -59,10 +61,30 @@ specs/              dated requirement snapshots (historical, not maintained)
 ```bash
 docker build -t license-management .
 docker run --rm -p 3000:3000 license-management
-curl http://localhost:3000/api/health   # {"status":"ok"}
+curl http://localhost:3000/api/health   # {"status":"ok","version":"0.1.1"}
 ```
 
 The image uses a multi-stage build, contains only the standalone server (no dev dependencies or source), runs as the unprivileged `node` user, and has a built-in health check.
+
+## Versioning
+
+The app version lives in `package.json`. Every feature branch bumps the patch version once:
+
+```bash
+npm version patch --no-git-tag-version
+```
+
+`GET /api/health` returns it (`{"status":"ok","version":"x.y.z"}`), so you can check which version is running. The version is baked in at build time.
+
+If two branches are open at the same time, the second one to be merged has to bump again after rebasing onto `main`. `npm run check:version` fails until it does.
+
+## CI/CD
+
+GitHub Actions workflows live in `.github/workflows/`:
+
+| Workflow | Trigger                          | Steps                                                    |
+| -------- | -------------------------------- | -------------------------------------------------------- |
+| `ci.yml` | push to any branch except `main` | `npm run check`, version guard (`npm run check:version`) |
 
 ## Quality rules
 
