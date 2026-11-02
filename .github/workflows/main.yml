@@ -1,5 +1,6 @@
-# Pipeline for main: QA, then publish the Docker image to GitHub Container
-# Registry. Runs one at a time so releases never overtake each other.
+# Pipeline for main: QA, publish the Docker image to GitHub Container Registry,
+# deploy it to Azure App Service and verify that the new version is online.
+# Runs one at a time so releases never overtake each other.
 name: Main
 
 on:
@@ -16,6 +17,9 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/rstropek/license-management
+  RESOURCE_GROUP: rg-licensemanagement
+  WEBAPP: app-licensemanager-rainer
+  APP_URL: https://app-licensemanager-rainer.azurewebsites.net
 
 jobs:
   qa:
@@ -102,3 +106,49 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Azure
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: ${{ env.APP_URL }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      VERSION: ${{ needs.publish.outputs.version }}
+    steps:
+      # OIDC login with a user-assigned managed identity. Its federated
+      # credential only trusts the `production` environment of this repo.
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # Deploy the immutable version tag (not `latest`) so the running app
+      # always maps to exactly one image. The image name must include the
+      # registry host, otherwise App Service pulls from Docker Hub.
+      - name: Point the web app to the new image
+        run: |
+          az webapp config container set \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "$WEBAPP" \
+            --container-image-name "$IMAGE:$VERSION" \
+            --output none
+
+      - name: Wait until the new version is online
+        run: |
+          for attempt in $(seq 1 30); do
+            online=$(curl --silent --fail --max-time 10 "$APP_URL/api/health" | jq -r .version || true)
+            echo "Attempt $attempt: online version '${online}', expected '$VERSION'"
+            if [ "$online" = "$VERSION" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::Version $VERSION is not online after 5 minutes"
+          exit 1
