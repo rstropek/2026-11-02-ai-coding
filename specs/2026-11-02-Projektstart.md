@@ -50,3 +50,15 @@ In der ersten Iteration wollen wir das Skelett unserer Anwendung erstellen. Folg
   * Warning- und Error free. Es wurde ein "Code Smell" eingebaut, der durch Biome entdeckt wurde. Es wurde ein Typ-Fehler eingebaut, der durch TypeScript entdeckt wurde.
   * Das Dockerfile wurde geschrieben, kann korrekt gebaut werden, ein Container kann darauf aufbauen erfolgreich gestartet werden und ein curl HTTP GET an den Endpunkt im Container liefert Erfolg.
   * Am Ende wenn alle anderen Prüfungen erfolgreich waren, starte einen eigenen Subagenten, der nochmals mit frischem Blick alle Festlegungen aus diesem Dokument gegen den geschriebenen Code prüft.
+
+## Zweite Iteration
+
+* Anlegen der für die Anwendung notwendigen Ressourcen in der verbundenen (Azure CLI) Azure Subscription:
+  * Resource Group `rg-licensemanagement`
+  * Separate Azure App Service Linux for containers (smallest Pro SKU, P0something)
+  * Azure App Service für Next.js app
+* QA-Schritte bei Commit auf Feature Branch
+* QA-Schritte bei Merge auf Main
+* CD (wenn QA grün) in GitHub Container Registry
+* CD (wenn Image in Container Registry) in Microsoft Azure
+* Erhöhen der Patch-Version in package.json bei jedem Feature Branch, Patch-Version muss in health Endpoint veröffentlicht werden, prüfbar, ob neue Version online
