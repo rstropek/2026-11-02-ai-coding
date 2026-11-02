@@ -61,7 +61,7 @@ specs/              dated requirement snapshots (historical, not maintained)
 ```bash
 docker build -t license-management .
 docker run --rm -p 3000:3000 license-management
-curl http://localhost:3000/api/health   # {"status":"ok","version":"0.1.1"}
+curl http://localhost:3000/api/health   # {"status":"ok","version":"x.y.z"}
 ```
 
 The image uses a multi-stage build, contains only the standalone server (no dev dependencies or source), runs as the unprivileged `node` user, and has a built-in health check.
@@ -82,9 +82,21 @@ If two branches are open at the same time, the second one to be merged has to bu
 
 GitHub Actions workflows live in `.github/workflows/`:
 
-| Workflow | Trigger                          | Steps                                                    |
-| -------- | -------------------------------- | -------------------------------------------------------- |
-| `ci.yml` | push to any branch except `main` | `npm run check`, version guard (`npm run check:version`) |
+| Workflow   | Trigger                          | Steps                                                                                    |
+| ---------- | -------------------------------- | ---------------------------------------------------------------------------------------- |
+| `ci.yml`   | push to any branch except `main` | `npm run check`, version guard (`npm run check:version`)                                 |
+| `main.yml` | push to `main`                   | `qa`: `npm run check` + e2e tests → `publish`: Docker image to GitHub Container Registry |
+
+The `main` pipeline repeats the full QA because there are no pull requests that would gate a merge. It publishes the image only if QA is green:
+
+- Image: [`ghcr.io/rstropek/license-management`](https://github.com/rstropek/2026-11-02-ai-coding/pkgs/container/license-management) (public)
+- Tags: `<version>` (from `package.json`, immutable), `sha-<short commit>`, and `latest`
+- The pipeline fails if `<version>` already exists in the registry, so a published release is never overwritten. Bump the version on the feature branch instead.
+
+```bash
+docker run --rm -p 3000:3000 ghcr.io/rstropek/license-management:latest
+curl http://localhost:3000/api/health
+```
 
 ## Quality rules
 
