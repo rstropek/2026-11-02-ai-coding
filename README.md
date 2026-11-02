@@ -141,10 +141,14 @@ az webapp log config -g $RG -n $APP --docker-container-logging filesystem
 
 # Identity for GitHub Actions (OIDC, no secrets). It may only deploy from the
 # `production` environment and only change this web app.
+# GitHub issues OIDC subjects with immutable owner and repository IDs:
+# repo:<owner>@<owner id>/<repo>@<repo id>:environment:<environment>
 az identity create -g $RG -n $ID
+OWNER_ID=$(gh api users/rstropek --jq .id)
+REPO_ID=$(gh api repos/$REPO --jq .id)
 az identity federated-credential create -g $RG --identity-name $ID -n github-production \
   --issuer https://token.actions.githubusercontent.com \
-  --subject repo:$REPO:environment:production \
+  --subject "repo:rstropek@$OWNER_ID/2026-11-02-ai-coding@$REPO_ID:environment:production" \
   --audiences api://AzureADTokenExchange
 az role assignment create --role "Website Contributor" \
   --assignee-object-id "$(az identity show -g $RG -n $ID --query principalId -o tsv)" \
