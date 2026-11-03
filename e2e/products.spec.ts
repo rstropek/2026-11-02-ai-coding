@@ -131,6 +131,32 @@ test("creates, edits, deactivates and deletes a product", async ({ page }) => {
   await expect(page.getByRole("link", { name: id })).toHaveCount(0);
 });
 
+test("confirms every save, also the same product twice in a row", async ({
+  page,
+  request,
+}) => {
+  const id = uniqueId("FLASH");
+  await request.post("/api/products", {
+    data: { id, description: "Flash-Test", available: true, price: 1 },
+  });
+
+  const saved = page
+    .getByRole("status")
+    .getByText(`Änderungen an ${id} gespeichert.`);
+  await page.goto(`/produkte/${id}`);
+  // Client-side navigation, so the detail page visited before is reused.
+  for (const price of ["2", "3"]) {
+    await page.getByRole("link", { name: "Bearbeiten", exact: true }).click();
+    await ready(page, "Änderungen speichern");
+    await page.getByRole("textbox", { name: "Preis", exact: true }).fill(price);
+    await page.getByRole("button", { name: "Änderungen speichern" }).click();
+    await expect(page.getByText(`${price},00 €`)).toBeVisible();
+    await expect(saved).toBeVisible();
+    // Wait until the toast is gone, so the next round sees a new one.
+    await expect(saved).toHaveCount(0, { timeout: 10_000 });
+  }
+});
+
 test("shows problems the server reports instead of saving", async ({
   page,
 }) => {

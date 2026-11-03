@@ -116,4 +116,11 @@ describe("product API", () => {
     expect((await DELETE(request, context("GATEWAY"))).status).toBe(204);
     expect((await DELETE(request, context("GATEWAY"))).status).toBe(404);
   });
+
+  it("accepts IDs in the URL in lower case, like in the body", async () => {
+    await POST(json("POST", body));
+    expect((await PUT(json("PUT", body), context("gateway"))).status).toBe(200);
+    const request = new Request("http://localhost", { method: "DELETE" });
+    expect((await DELETE(request, context("gateway"))).status).toBe(204);
+  });
 });

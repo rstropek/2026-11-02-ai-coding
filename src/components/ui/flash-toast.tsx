@@ -15,7 +15,14 @@ export function FlashToast({ message }: { message: string | undefined }) {
   const shown = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (message && shown.current !== message) {
+    if (!message) {
+      // The URL no longer has the message. Next keeps this page alive for a
+      // later visit, which may bring the same message again (the same
+      // product saved twice), so forget what was shown.
+      shown.current = undefined;
+      return;
+    }
+    if (shown.current !== message) {
       shown.current = message;
       toast(message);
       router.replace(pathname, { scroll: false });

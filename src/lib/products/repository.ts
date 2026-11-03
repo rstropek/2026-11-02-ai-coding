@@ -209,6 +209,26 @@ export async function updateProduct(product: Product): Promise<Product> {
   });
 }
 
+/**
+ * Changes only the availability. Reading and writing happen in one queued
+ * step, so a save that runs at the same time is not overwritten with an old
+ * copy. Throws ProductNotFoundError if the product does not exist.
+ */
+export function setAvailability(
+  id: string,
+  available: boolean,
+): Promise<Product> {
+  return serialized(async () => {
+    const product = await getProduct(id);
+    if (!product) {
+      throw new ProductNotFoundError(id);
+    }
+    const data = validated({ ...product, available });
+    await writeAtomically(data);
+    return data;
+  });
+}
+
 /** Deletes a product. Throws ProductNotFoundError if it does not exist. */
 export function deleteProduct(id: string): Promise<void> {
   return serialized(async () => {

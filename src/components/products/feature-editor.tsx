@@ -2,6 +2,7 @@
 
 import { ArrowDown, ArrowUp, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Field, FieldError, fieldAria } from "@/components/ui/field";
+import { focusLater } from "@/components/ui/focus-later";
 import {
   buttonClass,
   iconButtonClass,
@@ -44,11 +45,6 @@ const fieldCountLabel = (count: number) =>
   count > 0
     ? plural(count, "Zusatzinformation", "Zusatzinformationen")
     : "Keine Zusatzinformationen";
-
-/** Moves focus after a re-render, once the target element exists. */
-function focusLater(id: string) {
-  requestAnimationFrame(() => document.getElementById(id)?.focus());
-}
 
 export function FeatureEditor({
   feature,

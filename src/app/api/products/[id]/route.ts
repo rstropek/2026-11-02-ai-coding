@@ -1,4 +1,5 @@
 import { deleteProduct, ProductNotFoundError } from "@/lib/products/repository";
+import { normalizeId } from "@/lib/products/schema";
 import { saveProduct } from "@/lib/products/service";
 import { invalidJson, readJson, saveResponse } from "../http";
 
@@ -22,7 +23,7 @@ export async function DELETE(
 ): Promise<Response> {
   const { id } = await params;
   try {
-    await deleteProduct(id);
+    await deleteProduct(normalizeId(id));
     return new Response(null, { status: 204 });
   } catch (error) {
     if (error instanceof ProductNotFoundError) {

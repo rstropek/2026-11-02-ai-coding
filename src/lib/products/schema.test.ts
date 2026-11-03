@@ -77,6 +77,12 @@ describe("productSchema", () => {
   });
 
   it.each([
+    0, 0.29, 1290.5, 308335593.6, 283402683.97, 999999999.99, 1_000_000_000,
+  ])("accepts the price %j", (price) => {
+    expect(issues({ ...valid, price })).toEqual([]);
+  });
+
+  it.each([
     "http://example.com",
     "example.com",
     "https://intranet",

@@ -5,6 +5,7 @@ import {
   updateProduct,
 } from "./repository";
 import {
+  normalizeId,
   type Product,
   productSchema,
   toValidationIssues,
@@ -37,7 +38,7 @@ export async function saveProduct(
     };
   }
   const product = parsed.data;
-  if (expectedId !== undefined && product.id !== expectedId) {
+  if (expectedId !== undefined && product.id !== normalizeId(expectedId)) {
     return {
       ok: false,
       reason: "invalid",

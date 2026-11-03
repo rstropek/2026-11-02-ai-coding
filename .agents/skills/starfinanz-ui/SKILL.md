@@ -25,8 +25,9 @@ efficiency wins and the brand recedes to accents.
 2. Check whether the design tokens are installed: `src/app/globals.css` should
    contain `--color-primary: #af0260`. If not, do the setup below first, as a
    separate step.
-3. Look in `src/components/ui/` for existing primitives (Button, Field, Badge,
-   Table, PageHeader, ...). Reuse and extend them. Create a primitive there
+3. Look in `src/components/ui/` for existing primitives (`buttonClass` and
+   the other class recipes in `styles.ts`, `Field`, `PageHeader`, `Alert`,
+   `ConfirmDialog`, `useToast`, ...). Reuse and extend them. Create a primitive there
    when a pattern is needed a second time, not before.
 4. For concrete class recipes, read `references/components.md` (table of
    contents at the top; read only the sections you need). For the reasoning
@@ -49,9 +50,8 @@ efficiency wins and the brand recedes to accents.
    // <html lang="de" className={`${firaSans.variable} ${sourceSerif.variable} ${firaMono.variable} h-full antialiased`}>
    // <body className="flex min-h-full flex-col font-sans">
    ```
-3. Migrate existing components that use default palette classes (the
-   calculator demo uses `slate-*` and `teal-*`) to the tokens, and remove the
-   `dark:` variants.
+3. Migrate existing components that use default palette classes (e.g.
+   `slate-*`, `teal-*`) to the tokens, and remove the `dark:` variants.
 4. Run `npm run check` and `npm run test:e2e`.
 
 The app is light mode only, like the website. Do not add `dark:` variants; if
@@ -114,6 +114,7 @@ one place.
 | Status                         | `text-{success,warning,danger,info}` on `bg-{...}-subtle`                                      |
 | Radius                         | `rounded-control` (8px) everything; `rounded-full` badges, chips                               |
 | Elevation                      | `shadow-card` resting cards, `shadow-overlay` dialogs, menus, toasts                           |
+| Motion                         | `motion-safe:animate-appear` new rows, toasts                                                  |
 | Fonts                          | `font-sans` (Fira Sans), `font-serif` (Source Serif 4), `font-mono` (Fira Mono)                |
 
 ## Typography
@@ -189,8 +190,7 @@ Design the empty and error states as deliberately as the filled one.
 - No component library (shadcn, MUI, ...) without asking the user - the token
   set is small enough to build primitives directly, and a library would bring
   its own look.
-- Icons: `lucide-react` (install with `npm install lucide-react` when first
-  needed), 16px in tables and buttons, 20px in navigation, stroke width 1.75,
+- Icons: `lucide-react` (already installed), 16px in tables and buttons, 20px in navigation, stroke width 1.75,
   `aria-hidden` unless the icon is the only content.
 - Component tests (Testing Library) query by role and accessible name
   (`getByRole("button", { name: "Lizenz anlegen" })`). That tests the

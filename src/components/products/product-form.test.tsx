@@ -151,6 +151,42 @@ describe("ProductForm", () => {
     ).toBeVisible();
   });
 
+  it("keeps the input when the save request fails", async () => {
+    const { saveAction, user } = renderForm({ product });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    saveAction.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+
+    await user.click(
+      screen.getByRole("button", { name: "Änderungen speichern" }),
+    );
+
+    expect(
+      await screen.findByText(/Das Produkt konnte nicht gespeichert werden/),
+    ).toBeVisible();
+    expect(screen.getByLabelText(/^ID/)).toHaveValue("GATEWAY");
+    expect(screen.getByLabelText(/^Preis/)).toHaveValue("2.450,00");
+  });
+
+  it("forgets the problems of a removed feature", async () => {
+    const { user } = renderForm({ product });
+
+    await user.click(
+      screen.getByRole("button", { name: "Feature hinzufügen" }),
+    );
+    await user.click(
+      screen.getByRole("button", { name: "Änderungen speichern" }),
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Bitte prüfen Sie 2 Angaben",
+    );
+
+    const features = screen.getAllByRole("button", {
+      name: "Feature entfernen",
+    });
+    await user.click(features[features.length - 1] as HTMLElement);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
   it("keeps the ID of saved products and features fixed", () => {
     renderForm({ product, initialFeature: "VPN" });
 

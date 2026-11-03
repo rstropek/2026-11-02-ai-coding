@@ -42,6 +42,11 @@ function idSchema(what: string) {
   );
 }
 
+/** Normalizes an ID the way the schema does (e.g. an ID from a URL). */
+export function normalizeId(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 /** Returns true if `value` is a well-formed (normalized) product or feature ID. */
 export function isValidId(value: string): boolean {
   return value.length <= ID_MAX && ID_PATTERN.test(value);
@@ -139,7 +144,9 @@ const priceSchema = z
   .number({ error: "Bitte geben Sie einen Preis ein." })
   .min(0, "Der Preis darf nicht negativ sein.")
   .max(PRICE_MAX, "Der Preis ist zu hoch.")
-  .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, {
+  // Compare with the rounded value instead of using a fixed tolerance on
+  // value * 100, whose rounding error grows with the price.
+  .refine((value) => Number(value.toFixed(2)) === value, {
     error: "Der Preis darf höchstens zwei Nachkommastellen haben.",
   });
 

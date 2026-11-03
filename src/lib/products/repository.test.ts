@@ -12,6 +12,7 @@ import {
   ProductExistsError,
   ProductNotFoundError,
   productsDir,
+  setAvailability,
   updateProduct,
 } from "./repository";
 import { type Product, productSchema } from "./schema";
@@ -91,6 +92,21 @@ describe("product repository", () => {
       "fulfilled",
       "rejected",
     ]);
+  });
+
+  it("changes the availability without losing a concurrent update", async () => {
+    await createProduct(product("A"));
+    await Promise.all([
+      updateProduct(product("A", { price: 99 })),
+      setAvailability("A", false),
+    ]);
+    expect(await getProduct("A")).toMatchObject({
+      price: 99,
+      available: false,
+    });
+    await expect(setAvailability("B", true)).rejects.toBeInstanceOf(
+      ProductNotFoundError,
+    );
   });
 
   it("does not read outside the data folder", async () => {

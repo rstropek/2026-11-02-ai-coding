@@ -1,5 +1,6 @@
 import { ChevronRight, ExternalLink, Pencil, Plus } from "lucide-react";
 import Link from "next/link";
+import { useId } from "react";
 import {
   buttonClass,
   cardClass,
@@ -18,12 +19,10 @@ export const editHref = (product: Product, feature?: string) =>
 
 /** Key facts, tags and links of a product. */
 export function ProductFacts({ product }: { product: Product }) {
+  const titleId = useId();
   return (
-    <section
-      aria-labelledby={`facts-title-${product.id}`}
-      className={`${cardClass} p-5 sm:p-6`}
-    >
-      <h2 id={`facts-title-${product.id}`} className="sr-only">
+    <section aria-labelledby={titleId} className={`${cardClass} p-5 sm:p-6`}>
+      <h2 id={titleId} className="sr-only">
         Stammdaten
       </h2>
       <dl className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-4 xl:grid-cols-6">
@@ -92,14 +91,12 @@ export function ProductFacts({ product }: { product: Product }) {
 
 /** The product's features with their additional information. */
 export function FeatureSection({ product }: { product: Product }) {
+  const titleId = useId();
   return (
-    <section aria-labelledby={`features-title-${product.id}`}>
+    <section aria-labelledby={titleId}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-baseline gap-3">
-          <h2
-            id={`features-title-${product.id}`}
-            className="text-xl font-semibold text-ink"
-          >
+          <h2 id={titleId} className="text-xl font-semibold text-ink">
             Features
           </h2>
           <span className="text-sm text-ink-muted">

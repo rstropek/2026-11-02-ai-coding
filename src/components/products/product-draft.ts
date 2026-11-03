@@ -4,6 +4,7 @@ import {
   type Product,
   type ProductInput,
   productSchema,
+  toValidationIssues,
   type ValidationIssue,
 } from "@/lib/products/schema";
 
@@ -201,16 +202,7 @@ export function validate(draft: ProductDraft): FormProblem[] {
   const result = productSchema.safeParse(toInput(draft));
   const problems = result.success
     ? []
-    : toProblems(
-        result.error.issues.map((issue) => ({
-          path: issue.path.filter(
-            (segment): segment is string | number =>
-              typeof segment !== "symbol",
-          ),
-          message: issue.message,
-        })),
-        draft,
-      );
+    : toProblems(toValidationIssues(result.error), draft);
 
   // The schema only sees a missing price; say what is wrong with the text.
   if (draft.price.trim() !== "" && parsePrice(draft.price) === undefined) {

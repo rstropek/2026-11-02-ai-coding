@@ -66,6 +66,7 @@ e2e/                Playwright end-to-end tests
 scripts/            build, data and CI helper scripts
 .github/workflows/  GitHub Actions pipelines
 specs/              dated requirement snapshots (historical, not maintained)
+docs/               dated design notes (historical, not maintained)
 ```
 
 ## Product management
@@ -172,7 +173,7 @@ GitHub Actions workflows live in `.github/workflows/`:
 
 | Workflow   | Trigger                          | Jobs                                                                                       |
 | ---------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
-| `ci.yml`   | push to any branch except `main` | `qa`: `npm run check`, version guard (`npm run check:version`)                             |
+| `ci.yml`   | push to any branch except `main` | `qa`: `npm run check`, version guard (`npm run check:version`), e2e tests                  |
 | `main.yml` | push to `main`                   | `qa`: `npm run check` + e2e tests → `publish`: image to GHCR → `deploy`: Azure App Service |
 
 The `main` pipeline repeats the full QA because there are no pull requests that would gate a merge. It publishes the image only if QA is green, and deploys only if the image was published:

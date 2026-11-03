@@ -2,6 +2,7 @@
 
 import { Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
+import { unstable_rethrow } from "next/navigation";
 import {
   type FormEvent,
   useEffect,
@@ -13,6 +14,7 @@ import {
 import type { FormActionResult } from "@/app/produkte/actions";
 import { Alert } from "@/components/ui/alert";
 import { Field, FieldError, fieldAria } from "@/components/ui/field";
+import { focusLater } from "@/components/ui/focus-later";
 import {
   buttonClass,
   cardClass,
@@ -63,11 +65,6 @@ type ProductFormProps = {
   saveAction: SaveProductAction;
 };
 
-/** Moves focus after a re-render, once the target element exists. */
-function focusLater(id: string) {
-  requestAnimationFrame(() => document.getElementById(id)?.focus());
-}
-
 /**
  * Create or edit a product including all its features. Everything is saved
  * together with one button, because products are only written as a whole.
@@ -93,6 +90,9 @@ export function ProductForm({
   const [errors, setErrors] = useState<Map<string, string>>(() => new Map());
   const [summary, setSummary] = useState<FormProblem[]>([]);
   const [message, setMessage] = useState<string>();
+  // Incremented when the summary should get focus (after a submit), so later
+  // changes to the summary, like removing a feature, do not move the focus.
+  const [summaryFocus, setSummaryFocus] = useState(0);
   const [tagInput, setTagInput] = useState("");
   const [pending, startTransition] = useTransition();
   const hydrated = useHydrated();
@@ -115,6 +115,14 @@ export function ProductForm({
       }
       return next;
     });
+
+  /** Forgets the problems of controls that no longer exist. */
+  const dropProblems = (removed: (target: string) => boolean) => {
+    setErrors(
+      (current) => new Map([...current].filter(([target]) => !removed(target))),
+    );
+    setSummary((current) => current.filter((p) => !removed(p.target)));
+  };
 
   const validateOne = (target: string) =>
     setError(target, errorsByTarget(validate(draftRef.current)).get(target));
@@ -163,6 +171,7 @@ export function ProductForm({
 
   const removeFeature = (feature: FeatureDraft, index: number) => {
     patch({ features: draftRef.current.features.filter((f) => f !== feature) });
+    dropProblems((target) => target.startsWith(`feature-${feature.key}-`));
     focusLater(dom("add-feature"));
     toast(
       `Feature ${featureLabel(feature, index)} entfernt. Es wird beim Speichern gelöscht.`,
@@ -211,14 +220,14 @@ export function ProductForm({
   };
 
   useEffect(() => {
-    if (summary.length > 0 || message) {
+    if (summaryFocus > 0) {
       summaryRef.current?.focus({ preventScroll: true });
       summaryRef.current?.scrollIntoView({
         block: "start",
         behavior: "smooth",
       });
     }
-  }, [summary, message]);
+  }, [summaryFocus]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -227,11 +236,25 @@ export function ProductForm({
     setMessage(undefined);
     showProblems(problems);
     if (problems.length > 0) {
+      setSummaryFocus((n) => n + 1);
       return;
     }
     startTransition(async () => {
-      // On success the action redirects to the detail page.
-      const result = await saveAction(mode, toInput(current), product?.id);
+      let result: FormActionResult;
+      try {
+        // On success the action redirects to the detail page.
+        result = await saveAction(mode, toInput(current), product?.id);
+      } catch (error) {
+        // The request itself failed (network, server restart). Keep the
+        // input instead of letting the error page replace the form.
+        unstable_rethrow(error);
+        console.error("Saving product failed", error);
+        setMessage(
+          "Das Produkt konnte nicht gespeichert werden. Bitte prüfen Sie die Verbindung und versuchen Sie es erneut.",
+        );
+        setSummaryFocus((n) => n + 1);
+        return;
+      }
       setMessage(result.message);
       showProblems(
         toProblems(
@@ -239,6 +262,7 @@ export function ProductForm({
           current,
         ),
       );
+      setSummaryFocus((n) => n + 1);
     });
   };
 
@@ -456,7 +480,7 @@ export function ProductForm({
                       patch({
                         links: draftRef.current.links.filter((l) => l !== link),
                       });
-                      setError(target, undefined);
+                      dropProblems((t) => t === target);
                       focusLater(dom("add-link"));
                     }}
                   >

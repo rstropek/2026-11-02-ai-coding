@@ -4,9 +4,8 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import {
   deleteProduct,
-  getProduct,
   ProductNotFoundError,
-  updateProduct,
+  setAvailability,
 } from "@/lib/products/repository";
 import type { ValidationIssue } from "@/lib/products/schema";
 import { saveProduct } from "@/lib/products/service";
@@ -63,12 +62,11 @@ export async function setAvailabilityAction(
   available: boolean,
 ): Promise<ActionResult> {
   try {
-    const product = await getProduct(id);
-    if (!product) {
+    await setAvailability(id, available);
+  } catch (error) {
+    if (error instanceof ProductNotFoundError) {
       return { ok: false, message: `Das Produkt ${id} gibt es nicht mehr.` };
     }
-    await updateProduct({ ...product, available });
-  } catch (error) {
     console.error("Changing availability failed", error);
     return {
       ok: false,
