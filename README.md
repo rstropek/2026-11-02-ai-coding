@@ -7,7 +7,7 @@ Our products ship with built-in hardware features that customers unlock in softw
 - **customers** manage their products and activate features with purchased license keys,
 - **administrators** (our employees) manage customers, products, and license keys.
 
-> **Status:** Iteration 1 was the project skeleton (toolchain, Docker packaging). Iteration 2 added CI/CD: every merge into `main` is tested, published to GitHub Container Registry, and deployed to Azure App Service at <https://app-licensemanager-rainer.azurewebsites.net>. Iteration 3 adds **product management**: administrators maintain products and their unlockable features, stored as JSON files on an Azure Files share. Customers and license keys follow. There is no login yet. Requirements live in [`specs/`](specs/).
+> **Status:** Iteration 1 was the project skeleton (toolchain, Docker packaging). Iteration 2 added CI/CD: every merge into `main` is tested, published to GitHub Container Registry, and deployed to Azure App Service at <https://app-licensemanager-rainer.azurewebsites.net>. Iteration 3 adds **product management**: administrators maintain products and their unlockable features, stored as JSON files on an Azure Files share, and a read-only MCP server that lets AI assistants fetch them. Customers and license keys follow. There is no login yet. Requirements live in [`specs/`](specs/).
 
 ## Tech stack
 
@@ -52,6 +52,7 @@ src/
   app/              Next.js routes (pages, layouts, API route handlers)
     api/health/     liveness endpoint, reports the app version
     api/products/   product REST API
+    api/mcp/        MCP server (read-only product data)
     produkte/       product management pages and their Server Actions
   components/
     ui/             design system primitives (starfinanz-ui skill)
@@ -116,6 +117,29 @@ There is no authentication yet. It comes with the login iteration.
 
 ```bash
 curl https://app-licensemanager-rainer.azurewebsites.net/api/products
+```
+
+### MCP server
+
+`/api/mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server over Streamable HTTP, so AI assistants and agents can read the product data directly. It is built with the official TypeScript SDK (`@modelcontextprotocol/server`) and implements spec version 2026-07-28 (stateless, `server/discover`). Clients that still speak 2025-11-25 are served statelessly as well (no sessions, no standalone SSE stream).
+
+| Tool            | Description                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| `list_products` | All products with all features, sorted by ID, as `{ "products": [...] }` (same data as the REST API) |
+
+The tool is read-only and has no parameters. There is no authentication yet, like the REST API.
+
+Connect a client, e.g. Claude Code:
+
+```bash
+claude mcp add --transport http license-management https://app-licensemanager-rainer.azurewebsites.net/api/mcp
+```
+
+Try it without a client in the terminal with the [MCPJam CLI](https://www.mcpjam.com), or interactively with `npx @mcpjam/inspector@latest`:
+
+```bash
+npx -y @mcpjam/cli@latest tools list --url http://localhost:3000/api/mcp
+npx -y @mcpjam/cli@latest tools call --url http://localhost:3000/api/mcp --tool-name list_products
 ```
 
 ## Docker
