@@ -40,6 +40,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Use the latest release versions of dependencies; prereleases only when there is no suitable release.
 - Persistence is the file system (JSON files in a sensible folder structure), no database. This is a prototype.
 - `specs/` contains dated snapshots of requirements. They are not kept up to date, so never edit them. Biome excludes them on purpose.
+- Third-party skills and agents (`brainstorming`, `impeccable` with its `impeccable-*` agents, in `.agents/`, `.claude/` and `.github/`) are vendored as installed. Don't edit them by hand; Biome excludes them on purpose.
 
 ## Maintaining this file
 

@@ -7,7 +7,19 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!node_modules", "!.next", "!dist", "!build", "!specs"]
+    "includes": [
+      "**",
+      "!node_modules",
+      "!.next",
+      "!dist",
+      "!build",
+      "!specs",
+      "!.agents/skills/brainstorming",
+      "!.claude/skills/impeccable",
+      "!.github/skills/impeccable",
+      "!.claude/agents/impeccable-*",
+      "!.github/agents/impeccable-*"
+    ]
   },
   "formatter": {
     "enabled": true,
