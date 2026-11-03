@@ -121,7 +121,7 @@ curl https://app-licensemanager-rainer.azurewebsites.net/api/products
 
 ### MCP server
 
-`/api/mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server over Streamable HTTP, so AI assistants and agents can read the product data directly. It is built with the official TypeScript SDK (`@modelcontextprotocol/server`) and implements spec version 2026-07-28 (stateless, `server/discover`). Clients that still speak 2025-11-25 are served statelessly as well (no sessions, no standalone SSE stream).
+`/api/mcp` is a [Model Context Protocol](https://modelcontextprotocol.io) server over Streamable HTTP, so AI assistants and agents can read the product data directly. It is built with the official TypeScript SDK (`@modelcontextprotocol/server`) and implements spec version 2026-07-28 (stateless, `server/discover`). Only 2026-07-28 is supported: clients that still speak 2025-11-25 or older (`initialize` handshake) get `400` with error `-32022`, and the endpoint accepts only `POST`.
 
 | Tool            | Description                                                                                          |
 | --------------- | ---------------------------------------------------------------------------------------------------- |

@@ -9,8 +9,8 @@ AI assistants and agents should fetch the product master data through the Model 
 ## Goals, non-goals
 
 - Goal: one read-only tool, `list_products`, that returns all products with their features (same data as `GET /api/products`).
-- Goal: speak the current spec, 2026-07-28 (stateless, `server/discover`, `Mcp-Method`/`Mcp-Name` headers), and still serve 2025-era clients.
-- Non-goals: writes, filters, single-product lookup, resources, prompts, authentication (the REST API has none yet either).
+- Goal: speak the current spec, 2026-07-28 (stateless, `server/discover`, `Mcp-Method`/`Mcp-Name` headers), and only that: older protocol versions are rejected (decided after the first version, which still served 2025-era clients statelessly).
+- Non-goals: 2025-11-25 and older clients, writes, filters, single-product lookup, resources, prompts, authentication (the REST API has none yet either).
 
 ## Constraints
 
@@ -30,7 +30,7 @@ Both SDK and `mcp-handler` were spiked; both served 2026-07-28 and 2025-11-25 cl
 
 ## Decided
 
-- Route `src/app/api/mcp/route.ts`. The handler is created once per module; the factory builds a fresh `McpServer` per request (stateless). POST, GET and DELETE go to the handler; GET/DELETE answer 405.
+- Route `src/app/api/mcp/route.ts`. The handler is created once per module; the factory builds a fresh `McpServer` per request (stateless), with `legacy: "reject"`, so an `initialize` handshake gets 400 / `-32022`. Only POST is exported; Next.js answers other methods with 405.
 - `list_products` reuses `listProducts()`. The result is `{ products }` (structured content must be an object), with an `outputSchema` from the product schema and read-only annotations. The same JSON goes into the text content for clients without structured content.
 - Server info: name `license-management`, version from `package.json`.
 
@@ -38,4 +38,4 @@ Both SDK and `mcp-handler` were spiked; both served 2026-07-28 and 2025-11-25 cl
 
 - `tools/list` carries a cache hint of 5 minutes, scope `public` (the list only changes with a deployment).
 - No Host/Origin validation: it protects local servers against DNS rebinding, and the data is public through the REST API anyway. Revisit with authentication.
-- Tests: unit tests drive the route with the SDK client in 2026 and 2025 mode; one e2e test checks the production build.
+- Tests: unit tests drive the route with the SDK client for 2026-07-28 and check that a 2025 client is rejected; one e2e test checks the production build.

@@ -10,21 +10,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createProduct } from "@/lib/products/repository";
 import { productSchema } from "@/lib/products/schema";
 import packageJson from "../../../../package.json";
-import { DELETE, GET, POST } from "./route";
+import { POST } from "./route";
 
 const url = "http://localhost/api/mcp";
-const routes: Record<string, (request: Request) => Promise<Response>> = {
-  GET,
-  POST,
-  DELETE,
-};
 
-/** Sends the client's HTTP requests straight to the route handlers. */
+/** Sends the client's HTTP requests straight to the route handler. */
 const fetchRoute = (input: string | URL, init?: RequestInit) => {
   const request = new Request(input, init);
-  const route = routes[request.method];
-  return route
-    ? route(request)
+  return request.method === "POST"
+    ? POST(request)
     : Promise.resolve(new Response(null, { status: 405 }));
 };
 
@@ -87,26 +81,23 @@ describe("MCP server", () => {
     });
   });
 
-  it.each(["auto", "legacy"] as const)(
-    "returns all valid products sorted by ID (%s client)",
-    async (mode) => {
-      await createProduct(product("B"));
-      await createProduct(product("A"));
-      await mkdir(path.join(dataDir, "products"), { recursive: true });
-      await writeFile(path.join(dataDir, "products", "BROKEN.json"), "{");
-      vi.spyOn(console, "error").mockImplementation(() => {});
-      client = await connect(mode);
+  it("returns all valid products sorted by ID", async () => {
+    await createProduct(product("B"));
+    await createProduct(product("A"));
+    await mkdir(path.join(dataDir, "products"), { recursive: true });
+    await writeFile(path.join(dataDir, "products", "BROKEN.json"), "{");
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    client = await connect("auto");
 
-      const result = await client.callTool({ name: "list_products" });
+    const result = await client.callTool({ name: "list_products" });
 
-      expect(result.isError).toBeFalsy();
-      const expected = { products: [product("A"), product("B")] };
-      expect(result.structuredContent).toEqual(expected);
-      expect(result.content).toEqual([
-        { type: "text", text: JSON.stringify(expected) },
-      ]);
-    },
-  );
+    expect(result.isError).toBeFalsy();
+    const expected = { products: [product("A"), product("B")] };
+    expect(result.structuredContent).toEqual(expected);
+    expect(result.content).toEqual([
+      { type: "text", text: JSON.stringify(expected) },
+    ]);
+  });
 
   it("returns an empty list while there are no products", async () => {
     client = await connect("auto");
@@ -116,10 +107,31 @@ describe("MCP server", () => {
     expect(result.structuredContent).toEqual({ products: [] });
   });
 
-  it("answers GET with 405 because there is no standalone stream", async () => {
-    const response = await GET(
-      new Request(url, { headers: { accept: "text/event-stream" } }),
+  it("rejects 2025-era clients", async () => {
+    await expect(connect("legacy")).rejects.toThrow();
+
+    const response = await POST(
+      new Request(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "initialize",
+          params: {
+            protocolVersion: "2025-11-25",
+            capabilities: {},
+            clientInfo: { name: "old", version: "0.0.0" },
+          },
+        }),
+      }),
     );
-    expect(response.status).toBe(405);
+    expect(response.status).toBe(400);
+    expect(await response.json()).toMatchObject({
+      error: { code: -32022, data: { supported: ["2026-07-28"] } },
+    });
   });
 });
