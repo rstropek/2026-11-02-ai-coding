@@ -1,0 +1,24 @@
+{
+  "id": "DISPLAY-K15",
+  "description": "Kundendisplay mit 15-Zoll-Bildschirm, das Einkäufe und Werbung an der Kasse zeigt. Wird nicht mehr verkauft, bestehende Geräte werden weiter unterstützt.",
+  "available": false,
+  "price": 390,
+  "links": [],
+  "tags": ["Einzelhandel", "Auslaufmodell"],
+  "features": [
+    {
+      "id": "WERBUNG",
+      "description": "Werbeinhalte zwischen den Einkäufen abspielen.",
+      "fields": [
+        {
+          "name": "Playlist-ID",
+          "type": "text"
+        },
+        {
+          "name": "Laufzeit bis",
+          "type": "date"
+        }
+      ]
+    }
+  ]
+}

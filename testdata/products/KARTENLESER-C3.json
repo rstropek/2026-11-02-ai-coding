@@ -1,0 +1,34 @@
+{
+  "id": "KARTENLESER-C3",
+  "description": "Chipkartenleser mit PIN-Pad für Online-Banking und qualifizierte elektronische Signaturen.",
+  "available": true,
+  "price": 129,
+  "links": ["https://support.example.com/kartenleser-c3/treiber"],
+  "tags": ["Banking", "Sicherheit", "Hardware"],
+  "features": [
+    {
+      "id": "SIGNATUR-QES",
+      "description": "Qualifizierte elektronische Signatur nach eIDAS.",
+      "fields": [
+        {
+          "name": "Zertifikatsnummer",
+          "type": "text"
+        },
+        {
+          "name": "Gültig bis",
+          "type": "date"
+        }
+      ]
+    },
+    {
+      "id": "MULTI-KARTE",
+      "description": "Mehrere Bankkarten auf einem Gerät verwenden.",
+      "fields": [
+        {
+          "name": "Anzahl Karten",
+          "type": "integer"
+        }
+      ]
+    }
+  ]
+}

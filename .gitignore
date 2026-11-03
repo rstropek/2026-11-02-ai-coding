@@ -13,6 +13,10 @@
 # testing
 /coverage
 
+# local data folders (DATA_DIR of npm run dev and of the e2e tests)
+/data/
+/.e2e-data/
+
 # next.js
 /.next/
 /out/

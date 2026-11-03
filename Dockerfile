@@ -2,7 +2,7 @@
 
 # Multi-stage build for the Next.js standalone output.
 # Build:  docker build -t license-management .
-# Run:    docker run --rm -p 3000:3000 license-management
+# Run:    docker run --rm -p 3000:3000 -v "$PWD/testdata:/data" license-management
 
 ARG NODE_VERSION=26
 
@@ -30,9 +30,15 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    HOSTNAME=0.0.0.0
+    HOSTNAME=0.0.0.0 \
+    DATA_DIR=/data
 
 COPY --from=builder --chown=node:node /app/.next/standalone ./
+
+# Master data (JSON files) lives in /data. Mount a volume there (host folder,
+# Azure Files share); without one the data is lost with the container.
+RUN mkdir /data && chown node:node /data
+VOLUME /data
 
 USER node
 EXPOSE 3000

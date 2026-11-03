@@ -11,6 +11,10 @@ blob-report
 playwright
 e2e
 specs
+testdata
+data
+.e2e-data
+mockups
 *.md
 .env*
 *.tsbuildinfo

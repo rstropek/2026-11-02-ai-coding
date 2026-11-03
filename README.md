@@ -7,7 +7,7 @@ Our products ship with built-in hardware features that customers unlock in softw
 - **customers** manage their products and activate features with purchased license keys,
 - **administrators** (our employees) manage customers, products, and license keys.
 
-> **Status:** Iteration 1 is the project skeleton. It contains the toolchain, Docker packaging, and a small sample feature (a calculator that adds two numbers) that proves every test layer works. Iteration 2 added CI/CD: every merge into `main` is tested, published to GitHub Container Registry, and deployed to Azure App Service at <https://app-licensemanager-rainer.azurewebsites.net>. There is no license management functionality yet. Requirements live in [`specs/`](specs/).
+> **Status:** Iteration 1 was the project skeleton (toolchain, Docker packaging). Iteration 2 added CI/CD: every merge into `main` is tested, published to GitHub Container Registry, and deployed to Azure App Service at <https://app-licensemanager-rainer.azurewebsites.net>. Iteration 3 adds **product management**: administrators maintain products and their unlockable features, stored as JSON files on an Azure Files share. Customers and license keys follow. There is no login yet. Requirements live in [`specs/`](specs/).
 
 ## Tech stack
 
@@ -30,6 +30,7 @@ The UI is currently German. Code and technical documentation are in English.
 ```bash
 npm install
 npx playwright install chromium   # once, for e2e tests
+npm run data:reset                # copy the test data into ./data
 npm run dev                       # http://localhost:3000
 ```
 
@@ -41,6 +42,7 @@ npm run check:version  # version in package.json is greater than on origin/main
 npm run test:e2e   # Playwright against a production build (port 3100)
 npm run build      # production build into .next/standalone
 npm run start      # serve the production build
+npm run data:reset # replace the products in ./data with the test data
 ```
 
 ## Project structure
@@ -49,21 +51,82 @@ npm run start      # serve the production build
 src/
   app/              Next.js routes (pages, layouts, API route handlers)
     api/health/     liveness endpoint, reports the app version
-  components/       React components (tests next to them: *.test.tsx)
+    api/products/   product REST API
+    produkte/       product management pages and their Server Actions
+  components/
+    ui/             design system primitives (starfinanz-ui skill)
+    shell/          header and navigation
+    products/       product list, detail and form
   lib/              framework-independent logic (tests next to it: *.test.ts)
+    products/       product schema (Zod), file repository, save use case
+testdata/           sample products to mount as data folder
+mockups/            static click dummies (not deployed)
 e2e/                Playwright end-to-end tests
-scripts/            build and CI helper scripts
+scripts/            build, data and CI helper scripts
 .github/workflows/  GitHub Actions pipelines
 specs/              dated requirement snapshots (historical, not maintained)
+```
+
+## Product management
+
+Administrators list all products, open one with its features, create and edit products including all features, deactivate them and delete them. UI routes: `/produkte`, `/produkte/neu`, `/produkte/<ID>`, `/produkte/<ID>/bearbeiten`.
+
+### Data
+
+Each product is one JSON file, `<DATA_DIR>/products/<ID>.json`, with its features embedded:
+
+```json
+{
+  "id": "GATEWAY-IOT4",
+  "description": "Industrie-Gateway mit vier Ethernet-Anschlüssen …",
+  "available": true,
+  "price": 2450,
+  "links": ["https://docs.example.com/gateway-iot4/installation"],
+  "tags": ["Industrie", "IoT"],
+  "features": [
+    {
+      "id": "FERNWARTUNG",
+      "description": "Fernzugriff für den Service …",
+      "fields": [
+        { "name": "Wartungsvertrag-Nr.", "type": "text" },
+        { "name": "Anzahl Service-Zugänge", "type": "integer" },
+        { "name": "Gültig bis", "type": "date" }
+      ]
+    }
+  ]
+}
+```
+
+- `DATA_DIR` defaults to `./data` (relative to the working directory; `npm run start` runs in `.next/standalone`). The Docker image uses `/data`, which is meant to be a volume mount.
+- The schema in `src/lib/products/schema.ts` (Zod) validates every file on every read, every API request and the form. Files that fail validation are logged and left out; the product list shows a warning naming them.
+- IDs are upper-case codes (`A–Z`, `0–9`, `-`, `_`, max. 20 characters) and cannot change once saved, because licenses will reference them. Field types: `text`, `integer`, `date`. Prices are EUR with at most two decimal places.
+- Writes go to a temporary file that is then renamed, so readers never see half-written files. Writes are serialized in the process; the app runs as one instance.
+- [`testdata/`](testdata/) holds five sample products that follow the rules of the spec.
+
+### API
+
+There is no authentication yet. It comes with the login iteration.
+
+| Method   | Path                 | Description                                                                  |
+| -------- | -------------------- | ---------------------------------------------------------------------------- |
+| `GET`    | `/api/products`      | All products with all features, sorted by ID (no filters yet)                |
+| `POST`   | `/api/products`      | Create a product including features. `201`, `400` with `issues`, `409` taken |
+| `PUT`    | `/api/products/<ID>` | Replace a product including all features. `200`, `400`, `404`                |
+| `DELETE` | `/api/products/<ID>` | Delete a product. `204`, `404`                                               |
+
+```bash
+curl https://app-licensemanager-rainer.azurewebsites.net/api/products
 ```
 
 ## Docker
 
 ```bash
 docker build -t license-management .
-docker run --rm -p 3000:3000 license-management
+docker run --rm -p 3000:3000 -v "$PWD/testdata:/data" license-management
 curl http://localhost:3000/api/health   # {"status":"ok","version":"x.y.z"}
 ```
+
+The app keeps its data in `/data`. Without a volume there, the data is lost with the container. Mounting `testdata/` directly changes the files in the repository; copy it first if you don't want that.
 
 The image uses a multi-stage build, contains only the standalone server (no dev dependencies or source), runs as the unprivileged `node` user, and has a built-in health check.
 
@@ -114,6 +177,8 @@ The app runs on Azure App Service (Web App for Containers):
 | App Service plan (Linux, P0v4)            | `asp-licensemanagement`       |
 | Web App for Containers                    | `app-licensemanager-rainer`   |
 | User-assigned managed identity for GitHub | `id-licensemanagement-deploy` |
+| Storage account with file share `data`    | `stlicensemgmtrainer`         |
+| Key Vault (storage key for the mount)     | `kv-licensemgmt-rainer`       |
 
 ### How the resources were created
 
@@ -167,16 +232,64 @@ gh variable set AZURE_SUBSCRIPTION_ID -R $REPO -b "$(az account show --query id 
 
 The GHCR package is public (it inherited the visibility of the public repository), so App Service pulls the image without registry credentials. When you set the image manually, always include the `ghcr.io/` host in the image name. Without it, App Service pulls from Docker Hub.
 
+### Persistent data (Azure Files)
+
+The Azure Files share `data` is mounted into the container at `/data` (`DATA_DIR`), so products survive restarts and deployments.
+
+App Service storage mounts only support storage account keys; Entra ID and RBAC are not supported for mounts ([docs](https://learn.microsoft.com/azure/app-service/configure-connect-to-azure-storage?pivots=container-linux#limitations)). To keep the key out of the app configuration, it is stored in Key Vault. The web app reads it with its system-assigned managed identity through a Key Vault reference, and the mount points to that app setting. Uploads by administrators use Entra ID (`--auth-mode login`), not the key.
+
+```bash
+RG=rg-licensemanagement
+APP=app-licensemanager-rainer
+SA=stlicensemgmtrainer
+KV=kv-licensemgmt-rainer
+
+az storage account create -g $RG -n $SA -l westeurope --sku Standard_LRS --kind StorageV2 \
+  --https-only true --min-tls-version TLS1_2 --allow-blob-public-access false
+az storage share-rm create -g $RG --storage-account $SA -n data --quota 1 --enabled-protocols SMB
+az keyvault create -g $RG -n $KV -l westeurope --enable-rbac-authorization true
+
+# The web app's identity may read secrets; you may write secrets and files.
+ME=$(az ad signed-in-user show --query id -o tsv)
+APP_PRINCIPAL=$(az webapp identity assign -g $RG -n $APP --query principalId -o tsv)
+az role assignment create --role "Key Vault Secrets User" --assignee-object-id $APP_PRINCIPAL \
+  --assignee-principal-type ServicePrincipal --scope "$(az keyvault show -n $KV --query id -o tsv)"
+az role assignment create --role "Key Vault Secrets Officer" --assignee-object-id $ME \
+  --assignee-principal-type User --scope "$(az keyvault show -n $KV --query id -o tsv)"
+az role assignment create --role "Storage File Data Privileged Contributor" --assignee-object-id $ME \
+  --assignee-principal-type User --scope "$(az storage account show -g $RG -n $SA --query id -o tsv)"
+
+az keyvault secret set --vault-name $KV -n storage-account-key \
+  --value "$(az storage account keys list -g $RG -n $SA --query '[0].value' -o tsv)" -o none
+
+# Key Vault reference in an app setting; the mount refers to it with
+# @AppSettingRef(...). The CLI cannot do this yet (az webapp config
+# storage-account add only takes a plain key), so it goes through the REST API.
+az webapp config appsettings set -g $RG -n $APP -o none \
+  --settings "DATA_STORAGE_KEY=@Microsoft.KeyVault(VaultName=$KV;SecretName=storage-account-key)"
+az rest --method put \
+  --url "https://management.azure.com$(az webapp show -g $RG -n $APP --query id -o tsv)/config/azurestorageaccounts?api-version=2024-04-01" \
+  --body "{\"properties\":{\"data\":{\"type\":\"AzureFiles\",\"accountName\":\"$SA\",\"shareName\":\"data\",\"mountPath\":\"/data\",\"protocol\":\"Smb\",\"accessKey\":\"@AppSettingRef(DATA_STORAGE_KEY)\"}}}"
+
+# Upload the test data (only once, it overwrites changes made in the app).
+az storage file upload-batch --account-name $SA --destination data --destination-path products \
+  --source testdata/products --auth-mode login --enable-file-backup-request-intent
+```
+
+Check that the Key Vault reference resolves:
+
+```bash
+az rest --method get --url "https://management.azure.com$(az webapp show -g rg-licensemanagement -n app-licensemanager-rainer --query id -o tsv)/config/configreferences/appsettings/DATA_STORAGE_KEY?api-version=2024-04-01" --query properties.status
+```
+
+Key rotation: regenerate `key2`, store it in the secret, restart the app, then regenerate `key1`. App Service refreshes Key Vault references within 24 hours or on restart.
+
 ### Logs and cleanup
 
 ```bash
 az webapp log tail -g rg-licensemanagement -n app-licensemanager-rainer   # container logs
 az group delete -n rg-licensemanagement                                   # delete everything (stops all costs)
 ```
-
-### Open issue: persistence
-
-The app will store its data as JSON files. The container file system of App Service is not persistent: data is lost when the container restarts or a new version is deployed. We will solve this in the first iteration that stores real data, for example with a mounted Azure Files share.
 
 ## Quality rules
 

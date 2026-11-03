@@ -1,0 +1,35 @@
+{
+  "id": "SCAN-D500",
+  "description": "Dokumentenscanner für Belege und Verträge mit bis zu 60 Seiten pro Minute und Einzug für 100 Blatt.",
+  "available": true,
+  "price": 849,
+  "links": ["https://docs.example.com/scan-d500/datenblatt"],
+  "tags": ["Büro", "Dokumente", "Hardware"],
+  "features": [
+    {
+      "id": "OCR-PRO",
+      "description": "Texterkennung mit Export als durchsuchbares PDF und automatischer Belegerkennung.",
+      "fields": [
+        {
+          "name": "Sprachpakete",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "DUPLEX",
+      "description": "Beidseitiges Scannen in einem Durchgang.",
+      "fields": []
+    },
+    {
+      "id": "TAGESVOLUMEN",
+      "description": "Erhöht das empfohlene Tagesvolumen, ohne die Garantie zu verlieren.",
+      "fields": [
+        {
+          "name": "Seiten pro Tag",
+          "type": "integer"
+        }
+      ]
+    }
+  ]
+}

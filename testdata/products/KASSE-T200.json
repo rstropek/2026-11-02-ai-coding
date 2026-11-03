@@ -1,0 +1,56 @@
+{
+  "id": "KASSE-T200",
+  "description": "Kassenterminal mit 15,6-Zoll-Touchdisplay, integriertem Bondrucker und Kartenleser für den Einzelhandel. Zahlungsarten und Zusatzfunktionen werden per Lizenzschlüssel freigeschaltet.",
+  "available": true,
+  "price": 1290,
+  "links": [
+    "https://docs.example.com/kasse-t200/handbuch",
+    "https://support.example.com/kasse-t200"
+  ],
+  "tags": ["Einzelhandel", "Zahlungsverkehr", "Hardware"],
+  "features": [
+    {
+      "id": "KONTAKTLOS",
+      "description": "Kontaktloses Bezahlen per NFC mit Karte, Smartphone oder Smartwatch.",
+      "fields": []
+    },
+    {
+      "id": "MULTI-USER",
+      "description": "Mehrere Kassierer:innen mit eigener Anmeldung und getrennter Kassenabrechnung.",
+      "fields": [
+        {
+          "name": "Anzahl Benutzer:innen",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "id": "BON-CLOUD",
+      "description": "Digitale Belege in der Cloud speichern und per QR-Code an Kund:innen ausgeben.",
+      "fields": [
+        {
+          "name": "Mandanten-ID",
+          "type": "text"
+        },
+        {
+          "name": "Speicherdauer in Monaten",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "id": "FISKAL-TSE",
+      "description": "Technische Sicherheitseinrichtung nach Kassensicherungsverordnung (KassenSichV).",
+      "fields": [
+        {
+          "name": "TSE-Seriennummer",
+          "type": "text"
+        },
+        {
+          "name": "Zertifikat gültig bis",
+          "type": "date"
+        }
+      ]
+    }
+  ]
+}

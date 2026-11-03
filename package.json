@@ -15,12 +15,15 @@
     "check": "npm run lint && npm run typecheck && npm run test",
     "format": "biome format --write",
     "postbuild": "node scripts/copy-standalone-assets.mjs",
-    "check:version": "node scripts/check-version-bump.mjs"
+    "check:version": "node scripts/check-version-bump.mjs",
+    "data:reset": "node scripts/reset-data.mjs"
   },
   "dependencies": {
+    "lucide-react": "^1.67.0",
     "next": "16.4.4",
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.4",

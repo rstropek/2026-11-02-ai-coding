@@ -1,7 +1,10 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const port = 3100;
 const baseURL = `http://localhost:${port}`;
+// Every run starts from a fresh copy of the test data.
+const dataDir = path.resolve(".e2e-data");
 
 /**
  * End-to-end tests run against a production build.
@@ -25,8 +28,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run build && npm run start",
-    env: { PORT: String(port), HOSTNAME: "localhost" },
+    command: `node scripts/reset-data.mjs "${dataDir}" && npm run build && npm run start`,
+    env: { PORT: String(port), HOSTNAME: "localhost", DATA_DIR: dataDir },
     url: `${baseURL}/api/health`,
     reuseExistingServer: false,
     timeout: 180_000,

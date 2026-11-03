@@ -1,0 +1,56 @@
+{
+  "id": "GATEWAY-IOT4",
+  "description": "Industrie-Gateway mit vier Ethernet-Anschlüssen und LTE-Modem, das Maschinen und Sensoren sicher mit der Cloud verbindet.",
+  "available": true,
+  "price": 2450,
+  "links": [
+    "https://docs.example.com/gateway-iot4/installation",
+    "https://docs.example.com/gateway-iot4/api"
+  ],
+  "tags": ["Industrie", "IoT", "Hardware"],
+  "features": [
+    {
+      "id": "VPN",
+      "description": "Verschlüsselter Tunnel ins Firmennetz.",
+      "fields": [
+        {
+          "name": "Gegenstelle (Hostname)",
+          "type": "text"
+        }
+      ]
+    },
+    {
+      "id": "MODBUS-TCP",
+      "description": "Anbindung von Steuerungen über Modbus TCP.",
+      "fields": []
+    },
+    {
+      "id": "SENSOR-PAKET",
+      "description": "Zusätzliche Kanäle für Temperatur-, Druck- und Vibrationssensoren.",
+      "fields": [
+        {
+          "name": "Anzahl Sensoren",
+          "type": "integer"
+        }
+      ]
+    },
+    {
+      "id": "FERNWARTUNG",
+      "description": "Fernzugriff für den Service, jede Sitzung wird protokolliert.",
+      "fields": [
+        {
+          "name": "Wartungsvertrag-Nr.",
+          "type": "text"
+        },
+        {
+          "name": "Anzahl Service-Zugänge",
+          "type": "integer"
+        },
+        {
+          "name": "Gültig bis",
+          "type": "date"
+        }
+      ]
+    }
+  ]
+}

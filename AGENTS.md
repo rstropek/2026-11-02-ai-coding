@@ -25,6 +25,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Lint + typecheck + unit/component tests                    | `npm run check`                                   |
 | Version is above `origin/main` (run `git fetch` first)     | `npm run check:version`                           |
 | Docker image                                               | `docker build -t license-management .`            |
+| Copy the test data into `./data` (default `DATA_DIR`)      | `npm run data:reset`                              |
 
 ## Rules
 
@@ -38,7 +39,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Test preference: unit > component > e2e. Tests sit next to the code (`*.test.ts(x)`); e2e tests live in `e2e/`.
 - Change project config with tools, not by hand where possible: `npm install <pkg>`, `npm pkg set scripts.x="…"`, `npx biome migrate --write`.
 - Use the latest release versions of dependencies; prereleases only when there is no suitable release.
-- Persistence is the file system (JSON files in a sensible folder structure), no database. This is a prototype.
+- Persistence is the file system (JSON files in a sensible folder structure), no database. This is a prototype. Data lives in `DATA_DIR` (default `./data`, `/data` in Docker, an Azure Files mount in production); validate every read with the Zod schemas in `src/lib/`.
+- Next.js keeps pages visited before in the DOM (hidden). Element IDs must be unique per instance (`useId`), never fixed strings.
 - `specs/` contains dated snapshots of requirements. They are not kept up to date, so never edit them. Biome excludes them on purpose.
 - Third-party skills and agents (`brainstorming`, `impeccable` with its `impeccable-*` agents, in `.agents/`, `.claude/` and `.github/`) are vendored as installed. Don't edit them by hand; Biome excludes them on purpose.
 
