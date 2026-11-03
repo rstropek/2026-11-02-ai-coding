@@ -26,6 +26,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 | Version is above `origin/main` (run `git fetch` first)     | `npm run check:version`                           |
 | Docker image                                               | `docker build -t license-management .`            |
 | Copy the test data into `./data` (default `DATA_DIR`)      | `npm run data:reset`                              |
+| Architecture deck (Slidev, in `docs/architecture/`)        | `npm install && npm run dev` in that folder       |
 
 ## Rules
 
@@ -42,6 +43,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Persistence is the file system (JSON files in a sensible folder structure), no database. This is a prototype. Data lives in `DATA_DIR` (default `./data`, `/data` in Docker, an Azure Files mount in production); validate every read with the Zod schemas in `src/lib/`.
 - Next.js keeps pages visited before in the DOM (hidden). Element IDs must be unique per instance (`useId`), never fixed strings.
 - The MCP server (`src/app/api/mcp/`) uses the official SDK v2 (`@modelcontextprotocol/server`, spec 2026-07-28), not the v1 package `@modelcontextprotocol/sdk` or `mcp-handler`. It rejects older protocol versions on purpose (`legacy: "reject"`); don't add a fallback. The v2 client (`@modelcontextprotocol/client`) negotiates the 2025 era, and so fails here, unless you pass `versionNegotiation: { mode: "auto" }`.
+- `docs/architecture/` is the architecture slide deck (Slidev, own `package.json`). It is maintained: when a change touches layers, interfaces, Azure resources, identities, roles, secrets or a listed risk, update the affected slides in the same branch and set `asOf` on the title slide. Slides are German (an exception to the English-docs rule, for the review audience). Facts on the slides must be verified (code, README, read-only `az` queries), never assumed. `slides.md` is excluded from Biome because Biome's Markdown formatter would rewrite Slidev's frontmatter separators and HTML blocks.
 - `specs/` contains dated snapshots of requirements. They are not kept up to date, so never edit them. Biome excludes them on purpose.
 - Third-party skills and agents (`brainstorming`, `impeccable` with its `impeccable-*` agents, in `.agents/`, `.claude/` and `.github/`) are vendored as installed. Don't edit them by hand; Biome excludes them on purpose.
 

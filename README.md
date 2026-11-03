@@ -66,7 +66,8 @@ e2e/                Playwright end-to-end tests
 scripts/            build, data and CI helper scripts
 .github/workflows/  GitHub Actions pipelines
 specs/              dated requirement snapshots (historical, not maintained)
-docs/               dated design notes (historical, not maintained)
+docs/architecture/  architecture slide deck (Slidev, maintained with every architecture change)
+docs/superpowers/   dated design notes (historical, not maintained)
 ```
 
 ## Product management
@@ -315,6 +316,20 @@ Key rotation: regenerate `key2`, store it in the secret, restart the app, then r
 az webapp log tail -g rg-licensemanagement -n app-licensemanager-rainer   # container logs
 az group delete -n rg-licensemanagement                                   # delete everything (stops all costs)
 ```
+
+## Architecture deck
+
+[`docs/architecture/`](docs/architecture/) holds the slide deck for architecture reviews: software layers, Azure resources, identities and secrets, open risks. It is a [Slidev](https://sli.dev) project with its own `package.json`, kept separate so the app's dependencies and Docker image stay untouched. The slides are in German, like the UI.
+
+```bash
+cd docs/architecture
+npm install
+npm run dev      # http://localhost:3030, presenter view at /presenter
+npm run build    # static site in docs/architecture/dist
+npm run export   # PDF (uses the Playwright Chromium installed for the e2e tests)
+```
+
+Update the affected slides in the same branch whenever the architecture changes (new layer or interface, Azure resource, identity, role, secret, or a closed risk), and set `asOf` on the title slide to the date the facts were checked. CI builds the deck on every feature branch.
 
 ## Quality rules
 
