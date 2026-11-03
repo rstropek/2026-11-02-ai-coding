@@ -14,6 +14,7 @@
       "!dist",
       "!build",
       "!specs",
+      "!mockups/**/styles.css",
       "!.agents/skills/brainstorming",
       "!.claude/skills/impeccable",
       "!.github/skills/impeccable",

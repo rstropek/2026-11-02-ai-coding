@@ -47,3 +47,7 @@ node_modules/
 /blob-report/
 /playwright/.cache/
 /playwright/.auth/
+
+# impeccable (local review captures and machine-specific config)
+/.impeccable/review/
+/.impeccable/config.local.json
