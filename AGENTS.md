@@ -34,6 +34,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Every commit references a GitHub issue (e.g. `Refs #12`) that describes what the change does functionally and why.
 - Never commit to `main`. Work on a feature branch (`feature/<issue#>-<slug>`) and push it to origin. Don't open pull requests, and don't merge into `main` unless asked. After merging, delete the branch locally and on origin.
 - Code, comments, and technical docs are in English. The UI is German (i18n is out of scope for now).
+- UI work follows the design system in the `starfinanz-ui` skill.
 - Test preference: unit > component > e2e. Tests sit next to the code (`*.test.ts(x)`); e2e tests live in `e2e/`.
 - Change project config with tools, not by hand where possible: `npm install <pkg>`, `npm pkg set scripts.x="…"`, `npx biome migrate --write`.
 - Use the latest release versions of dependencies; prereleases only when there is no suitable release.
