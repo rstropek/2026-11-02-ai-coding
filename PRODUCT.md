@@ -39,6 +39,8 @@ Feature fields:
 - Beschreibung: up to 1000 characters
 - Zusatzinformationen: list of fields that must be entered when the feature is unlocked, each with a field name and a data type: Text, Ganzzahl or Datum (only these three for now)
 
+Data access (spec decisions): products are created and changed only as a whole, including all features; there are no separate writes per feature. Reading returns all products with all data, without filters (filters come later). Each product is stored in its own JSON file, the data folder is a volume mount (host folder or Azure File Share), and every read validates the schema with Zod.
+
 Lifecycle: a product that is no longer sold is deactivated ("Aktuell verfügbar" off), not deleted. Deleting is allowed only while no licenses reference the product.
 
 Technical: Next.js prototype, persistence as JSON files, light mode only, UI in German, code and docs in English.

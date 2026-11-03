@@ -111,6 +111,7 @@ window.PM_SEED = [
           "Fernzugriff für den Service, jede Sitzung wird protokolliert.",
         fields: [
           { name: "Wartungsvertrag-Nr.", type: "text" },
+          { name: "Anzahl Service-Zugänge", type: "integer" },
           { name: "Gültig bis", type: "date" },
         ],
       },

@@ -6,7 +6,7 @@
 // Data
 // ---------------------------------------------------------------------------
 
-const STORAGE_KEY = "pm-dummy-products-v1";
+const STORAGE_KEY = "pm-dummy-products-v2";
 
 function loadProducts() {
   try {
@@ -303,9 +303,6 @@ function showFlash() {
     gespeichert: `Änderungen an ${name} gespeichert.`,
     angelegt: `Produkt ${name} angelegt.`,
     geloescht: `Produkt ${name} gelöscht.`,
-    "feature-gespeichert": `Änderungen am Feature ${name} gespeichert.`,
-    "feature-angelegt": `Feature ${name} angelegt.`,
-    "feature-geloescht": `Feature ${name} gelöscht.`,
     zurueckgesetzt: "Die Beispieldaten wurden zurückgesetzt.",
   };
   if (messages[kind]) {
@@ -340,8 +337,8 @@ function confirmDialog({ title, body, confirmLabel, onConfirm }) {
   dialog.showModal();
 }
 
-// The dummy has no backend; ?zustand=laden or ?zustand=fehler shows the
-// loading and load-error states a real data view needs.
+// The dummy has no backend; ?zustand=laden, ?zustand=fehler or ?zustand=leer
+// shows the loading, load-error and empty states a real data view needs.
 const SIMULATED = new URLSearchParams(location.search).get("zustand");
 
 function skeleton(rows) {
@@ -433,12 +430,6 @@ function bindCounter(input, max) {
 // ---------------------------------------------------------------------------
 
 function renderList(root) {
-  const params = new URLSearchParams(location.search);
-  const state = {
-    q: params.get("q") ?? "",
-    status: params.get("status") ?? "alle",
-  };
-
   root.innerHTML = `${pageHeader({
     crumbs: [],
     title: "Produkte",
@@ -446,82 +437,30 @@ function renderList(root) {
       "Alle Produkte mit ihren freischaltbaren Features, Preisen und Verfügbarkeit.",
     actions: `<a href="produkt-bearbeiten.html" class="${btn("primary")}">${icon("plus")}Produkt anlegen</a>`,
   })}
-  <div class="mb-4 flex flex-wrap items-center gap-3">
-    <div class="relative w-full sm:w-80">
-      <label for="q" class="sr-only">Produkte suchen</label>
-      <span class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-subtle">${icon("search")}</span>
-      <input id="q" type="search" value="${esc(state.q)}" placeholder="ID, Beschreibung, Tag oder Feature" class="${TEXT_INPUT} pl-9">
-    </div>
-    <label for="status" class="sr-only">Verfügbarkeit</label>
-    <select id="status" class="h-10 min-w-0 flex-1 rounded-control border border-line-strong bg-surface px-3 text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30 sm:w-56 sm:flex-none">
-      <option value="alle">Alle Produkte</option>
-      <option value="verfuegbar">Nur verfügbare</option>
-      <option value="nicht-verfuegbar">Nur nicht verfügbare</option>
-    </select>
-    <p id="count" class="ml-auto text-sm text-ink-muted" aria-live="polite"></p>
-  </div>
+  <p id="count" class="mb-3 text-sm text-ink-muted"></p>
   <div id="results" class="${CARD} overflow-hidden"></div>`;
 
-  const search = root.querySelector("#q");
-  const status = root.querySelector("#status");
-  status.value = state.status;
-
-  const update = () => {
-    if (SIMULATED === "laden" || SIMULATED === "fehler") {
-      root.querySelector("#count").textContent = "";
-      root.querySelector("#results").innerHTML =
-        SIMULATED === "laden" ? skeleton(5) : loadError("Die Produkte");
-      // The alert stands on the canvas, not inside the table card.
-      root
-        .querySelector("#results")
-        .classList.toggle("contents", SIMULATED === "fehler");
-      return;
-    }
-    state.q = search.value.trim();
-    state.status = status.value;
-    const needle = state.q.toLowerCase();
-    const visible = products
-      .filter((p) =>
-        state.status === "alle"
-          ? true
-          : p.available === (state.status === "verfuegbar"),
-      )
-      .filter(
-        (p) =>
-          !needle ||
-          [p.id, p.description, ...p.tags, ...p.features.map((f) => f.id)]
-            .join(" ")
-            .toLowerCase()
-            .includes(needle),
-      )
-      .sort((a, b) => a.id.localeCompare(b.id, "de"));
-
-    root.querySelector("#count").textContent =
-      visible.length === products.length
-        ? plural(products.length, "Produkt", "Produkte")
-        : `${visible.length} von ${plural(products.length, "Produkt", "Produkten")}`;
-    root.querySelector("#results").innerHTML = visible.length
-      ? productTable(visible) + productList(visible)
-      : emptyList(products.length === 0);
-
-    const next = new URLSearchParams();
-    if (state.q) next.set("q", state.q);
-    if (state.status !== "alle") next.set("status", state.status);
-    const query = next.toString();
-    history.replaceState(null, "", query ? `?${query}` : location.pathname);
-  };
-
-  search.addEventListener("input", update);
-  status.addEventListener("change", update);
-  root.addEventListener("click", (event) => {
-    if (event.target.closest("[data-reset-filter]")) {
-      search.value = "";
-      status.value = "alle";
-      update();
-      search.focus();
-    }
-  });
-  update();
+  const results = root.querySelector("#results");
+  if (SIMULATED === "laden") {
+    results.innerHTML = skeleton(5);
+    return;
+  }
+  if (SIMULATED === "fehler") {
+    // The alert stands on the canvas, not inside the table card.
+    results.className = "";
+    results.innerHTML = loadError("Die Produkte");
+    return;
+  }
+  // Reading returns all products; search and filters come later.
+  const list = (SIMULATED === "leer" ? [] : [...products]).sort((a, b) =>
+    a.id.localeCompare(b.id, "de"),
+  );
+  root.querySelector("#count").textContent = list.length
+    ? plural(list.length, "Produkt", "Produkte")
+    : "";
+  results.innerHTML = list.length
+    ? productTable(list) + productList(list)
+    : emptyList();
 }
 
 function productTable(list) {
@@ -574,17 +513,11 @@ function productList(list) {
   return `<ul class="divide-y divide-line-subtle md:hidden" aria-label="Produkte">${items}</ul>`;
 }
 
-function emptyList(nothingExists) {
-  return nothingExists
-    ? `<div class="flex flex-col items-center gap-3 px-6 py-16 text-center">
-        <p class="text-base font-semibold text-ink">Noch keine Produkte</p>
-        <p class="max-w-sm text-sm text-ink-muted">Legen Sie das erste Produkt an. Danach können Sie seine freischaltbaren Features beschreiben.</p>
-      </div>`
-    : `<div class="flex flex-col items-center gap-3 px-6 py-16 text-center">
-        <p class="text-base font-semibold text-ink">Keine passenden Produkte</p>
-        <p class="max-w-sm text-sm text-ink-muted">Kein Produkt passt zu Suche und Filter. Prüfen Sie die Schreibweise oder zeigen Sie wieder alle Produkte.</p>
-        <button type="button" data-reset-filter class="${btn("secondary")}">Filter zurücksetzen</button>
-      </div>`;
+function emptyList() {
+  return `<div class="flex flex-col items-center gap-3 px-6 py-16 text-center">
+    <p class="text-base font-semibold text-ink">Noch keine Produkte</p>
+    <p class="max-w-sm text-sm text-ink-muted">Legen Sie das erste Produkt mit seinen freischaltbaren Features an.</p>
+  </div>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -657,7 +590,7 @@ function renderDetail(root) {
           <h2 id="features-title" class="text-xl font-semibold text-ink">Features</h2>
           <span class="text-sm text-ink-muted">${product.features.length}</span>
         </div>
-        <a href="feature-bearbeiten.html?produkt=${enc}" class="${btn("secondary", BTN_COMPACT)}">${icon("plus")}Feature anlegen</a>
+        <a href="produkt-bearbeiten.html?id=${enc}&feature=neu" class="${btn("secondary", BTN_COMPACT)}">${icon("plus")}Feature anlegen</a>
       </div>
       <p class="mb-4 max-w-prose text-sm text-ink-muted">Funktionen, die Kund:innen mit einem Lizenzschlüssel freischalten. Zusatzinformationen werden bei jeder Freischaltung abgefragt.</p>
       <div class="${CARD} overflow-hidden">${product.features.length ? featureTable(product) + featureList(product) : emptyFeatures()}</div>
@@ -721,7 +654,7 @@ function fieldSummary(fields) {
 }
 
 function featureHref(product, feature) {
-  return `feature-bearbeiten.html?produkt=${encodeURIComponent(product.id)}&feature=${encodeURIComponent(feature.id)}`;
+  return `produkt-bearbeiten.html?id=${encodeURIComponent(product.id)}&feature=${encodeURIComponent(feature.id)}`;
 }
 
 function featureTable(product) {
@@ -773,11 +706,327 @@ function emptyFeatures() {
 }
 
 // ---------------------------------------------------------------------------
+// Feature editor inside the product form. Features are only saved together
+// with their product, so they are edited here and nowhere else.
+// ---------------------------------------------------------------------------
+
+const fieldCount = (f) =>
+  f.fields.length
+    ? plural(f.fields.length, "Zusatzinformation", "Zusatzinformationen")
+    : "Keine Zusatzinformationen";
+
+function featureFieldRow(f, i) {
+  const k = f.key;
+  const entry = f.fields[i];
+  const base = `feature-${k}-field-${i}`;
+  return `<li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-4 first:pt-0 md:grid-cols-[minmax(0,1fr)_9rem_7.5rem] md:py-0 ${entry.fresh ? "motion-safe:animate-appear" : ""}">
+    <div class="col-span-2 flex flex-col gap-1.5 md:col-span-1">
+      <label for="${base}-name" class="text-sm font-medium text-ink md:sr-only">Feldname<span class="sr-only"> ${i + 1}</span></label>
+      <input id="${base}-name" data-field-name="${k}:${i}" value="${esc(entry.name)}" placeholder="zum Beispiel Anzahl Benutzer:innen" autocomplete="off" class="${TEXT_INPUT}">
+      <p id="${base}-name-error" class="hidden items-center gap-1.5 text-sm text-danger">${icon("alert")}<span></span></p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+      <label for="${base}-type" class="text-sm font-medium text-ink md:sr-only">Datentyp<span class="sr-only"> von Feld ${i + 1}</span></label>
+      <select id="${base}-type" data-field-type="${k}:${i}" class="${TEXT_INPUT}">
+        ${Object.entries(FIELD_TYPES)
+          .map(
+            ([value, t]) =>
+              `<option value="${value}" ${value === entry.type ? "selected" : ""}>${t.label}</option>`,
+          )
+          .join("")}
+      </select>
+    </div>
+    <div class="flex self-end md:self-start">
+      <button type="button" data-move="${k}:${i}" data-dir="-1" class="${ICON_BTN}" aria-label="Feld ${i + 1} nach oben" title="Nach oben" ${i === 0 ? "disabled" : ""}>${icon("arrowUp")}</button>
+      <button type="button" data-move="${k}:${i}" data-dir="1" class="${ICON_BTN}" aria-label="Feld ${i + 1} nach unten" title="Nach unten" ${i === f.fields.length - 1 ? "disabled" : ""}>${icon("arrowDown")}</button>
+      <button type="button" data-remove-field="${k}:${i}" class="${ICON_BTN}" aria-label="Feld ${i + 1} entfernen" title="Entfernen">${icon("trash")}</button>
+    </div>
+  </li>`;
+}
+
+function featureItem(f, open) {
+  const k = f.key;
+  const name = f.id.trim().toUpperCase();
+  return `<li id="feature-${k}" class="scroll-mt-6">
+    <details data-feature="${k}" ${open ? "open" : ""} class="group">
+      <summary class="-mx-2 flex cursor-pointer list-none items-center gap-3 rounded-control px-2 py-3 hover:bg-surface-muted [&::-webkit-details-marker]:hidden">
+        ${icon("chevronRight", 16, "text-ink-subtle transition-transform group-open:rotate-90")}
+        <span data-feature-label class="min-w-0 truncate font-mono font-medium ${name ? "text-ink" : "text-ink-subtle"}">${name ? esc(name) : "Neues Feature"}</span>
+        <span data-feature-meta class="ml-auto shrink-0 text-sm text-ink-muted">${fieldCount(f)}</span>
+      </summary>
+      <div class="flex flex-col gap-5 pt-2 pb-6 sm:pl-7">
+        ${field({
+          id: `feature-${k}-id`,
+          label: "Feature-ID",
+          required: true,
+          help: "Kurzer Code, höchstens 20 Zeichen, eindeutig innerhalb des Produkts.",
+          counter: `0 / ${ID_MAX}`,
+          control: `<input id="feature-${k}-id" data-feature-id="${k}" maxlength="${ID_MAX}" autocomplete="off" spellcheck="false" value="${esc(f.id)}" aria-describedby="feature-${k}-id-help" class="${TEXT_INPUT} font-mono uppercase">`,
+        })}
+        ${field({
+          id: `feature-${k}-description`,
+          label: "Beschreibung",
+          required: true,
+          counter: `0 / ${DESCRIPTION_MAX}`,
+          control: `<textarea id="feature-${k}-description" data-feature-description="${k}" rows="2" maxlength="${DESCRIPTION_MAX}" class="${INPUT} py-2">${esc(f.description)}</textarea>`,
+        })}
+        <div role="group" aria-labelledby="feature-${k}-fields-title">
+          <p id="feature-${k}-fields-title" class="text-sm font-medium text-ink">Zusatzinformationen bei der Freischaltung</p>
+          <p class="mt-1 mb-3 text-sm text-ink-muted">Angaben, die bei jeder Freischaltung eingegeben werden müssen, zum Beispiel eine Anzahl oder ein Datum „gültig bis“.</p>
+          ${
+            f.fields.length
+              ? `<div class="mb-2 hidden grid-cols-[minmax(0,1fr)_9rem_7.5rem] gap-3 md:grid" aria-hidden="true">
+              <span class="text-xs font-semibold tracking-wider text-ink-muted uppercase">Feldname</span>
+              <span class="text-xs font-semibold tracking-wider text-ink-muted uppercase">Datentyp</span>
+            </div>
+            <ol class="flex flex-col divide-y divide-line-subtle md:gap-3 md:divide-y-0">${f.fields.map((_, i) => featureFieldRow(f, i)).join("")}</ol>`
+              : ""
+          }
+          <button type="button" data-add-field="${k}" class="${btn("ghost", BTN_COMPACT)} mt-2 -ml-3">${icon("plus")}Feld hinzufügen</button>
+        </div>
+        <div class="rounded-control bg-canvas p-4">
+          <p class="text-sm font-medium text-ink">Vorschau der Freischaltung</p>
+          <p class="mt-0.5 mb-4 text-sm text-ink-muted">So fragt das Freischaltformular die Zusatzinformationen ab.</p>
+          <p id="feature-${k}-preview-summary" class="sr-only"></p>
+          <div id="feature-${k}-preview" inert class="flex flex-col gap-4"></div>
+        </div>
+        <div><button type="button" data-remove-feature="${k}" class="${btn("danger", BTN_COMPACT)}">${icon("trash")}Feature entfernen</button></div>
+      </div>
+    </details>
+  </li>`;
+}
+
+function renderFeaturePreview(f) {
+  const target = document.getElementById(`feature-${f.key}-preview`);
+  document.getElementById(`feature-${f.key}-preview-summary`).textContent = f
+    .fields.length
+    ? `Vorschau: Die Freischaltung fragt ${plural(f.fields.length, "Angabe", "Angaben")} ab: ${f.fields.map((x) => `${x.name.trim() || "Unbenanntes Feld"} (${FIELD_TYPES[x.type].label})`).join(", ")}.`
+    : "Vorschau: Die Freischaltung fragt keine Zusatzinformationen ab.";
+  target.innerHTML = f.fields.length
+    ? f.fields
+        .map((x) => {
+          const control = {
+            text: `<input type="text" class="${TEXT_INPUT}">`,
+            integer: `<input type="number" step="1" class="${TEXT_INPUT} text-right tabular-nums sm:max-w-40">`,
+            date: `<input type="date" class="${TEXT_INPUT} sm:max-w-48">`,
+          }[x.type];
+          return `<div class="flex flex-col gap-1.5">
+            <span class="text-sm font-medium ${x.name.trim() ? "text-ink" : "text-ink-subtle"}">${esc(x.name.trim() || "Unbenanntes Feld")} <span aria-hidden="true" class="text-danger">*</span></span>
+            <span class="flex items-center gap-1.5 text-xs text-ink-muted">${icon(FIELD_TYPES[x.type].icon, 12)}${FIELD_TYPES[x.type].label}</span>
+            ${control}
+          </div>`;
+        })
+        .join("")
+    : '<p class="text-sm text-ink-muted">Keine Zusatzinformationen. Das Feature wird ohne weitere Angaben freigeschaltet.</p>';
+}
+
+// Wires the feature list of the product form. Returns validate() and
+// serialize() for the form's submit handler.
+function bindFeatureEditor(form, features, initial) {
+  let nextKey = 0;
+  const drafts = features.map((f) => ({
+    ...structuredClone(f),
+    key: nextKey++,
+  }));
+  const open = new Set();
+  const list = form.querySelector("#features");
+  const byKey = (k) => drafts.find((f) => f.key === Number(k));
+  const split = (value) => value.split(":").map(Number);
+
+  const render = (focusSelector) => {
+    list.innerHTML = drafts.length
+      ? drafts.map((f) => featureItem(f, open.has(f.key))).join("")
+      : '<li class="py-4 text-sm text-ink-muted">Noch keine Features. Fügen Sie die Funktionen hinzu, die Kund:innen für dieses Produkt freischalten können.</li>';
+    for (const f of drafts) {
+      bindCounter(document.getElementById(`feature-${f.key}-id`), ID_MAX);
+      bindCounter(
+        document.getElementById(`feature-${f.key}-description`),
+        DESCRIPTION_MAX,
+      );
+      renderFeaturePreview(f);
+      for (const x of f.fields) delete x.fresh;
+    }
+    if (focusSelector) {
+      list.querySelector(focusSelector)?.focus();
+    }
+  };
+
+  const updateSummary = (f) => {
+    const item = document.getElementById(`feature-${f.key}`);
+    const label = item.querySelector("[data-feature-label]");
+    const name = f.id.trim().toUpperCase();
+    label.textContent = name || "Neues Feature";
+    label.classList.toggle("text-ink", Boolean(name));
+    label.classList.toggle("text-ink-subtle", !name);
+    item.querySelector("[data-feature-meta]").textContent = fieldCount(f);
+  };
+
+  const addFeature = () => {
+    const f = { id: "", description: "", fields: [], key: nextKey++ };
+    drafts.push(f);
+    open.add(f.key);
+    render(`#feature-${f.key}-id`);
+    document.getElementById(`feature-${f.key}`).scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  };
+
+  // Toggle does not bubble, so listen in the capture phase.
+  list.addEventListener(
+    "toggle",
+    (event) => {
+      const key = Number(event.target.dataset.feature);
+      if (event.target.open) open.add(key);
+      else open.delete(key);
+    },
+    true,
+  );
+
+  list.addEventListener("input", (event) => {
+    const data = event.target.dataset;
+    if (data.featureId !== undefined) {
+      const f = byKey(data.featureId);
+      f.id = event.target.value;
+      updateSummary(f);
+    } else if (data.featureDescription !== undefined) {
+      byKey(data.featureDescription).description = event.target.value;
+    } else if (data.fieldName !== undefined) {
+      const [k, i] = split(data.fieldName);
+      byKey(k).fields[i].name = event.target.value;
+      renderFeaturePreview(byKey(k));
+    }
+  });
+
+  list.addEventListener("change", (event) => {
+    if (event.target.dataset.fieldType !== undefined) {
+      const [k, i] = split(event.target.dataset.fieldType);
+      byKey(k).fields[i].type = event.target.value;
+      renderFeaturePreview(byKey(k));
+    }
+  });
+
+  list.addEventListener("click", (event) => {
+    const addField = event.target.closest("[data-add-field]");
+    const move = event.target.closest("[data-move]");
+    const removeField = event.target.closest("[data-remove-field]");
+    const removeFeature = event.target.closest("[data-remove-feature]");
+    if (addField) {
+      const f = byKey(addField.dataset.addField);
+      f.fields.push({ name: "", type: "text", fresh: true });
+      render(`#feature-${f.key}-field-${f.fields.length - 1}-name`);
+    } else if (move) {
+      const [k, from] = split(move.dataset.move);
+      const f = byKey(k);
+      const to = from + Number(move.dataset.dir);
+      [f.fields[from], f.fields[to]] = [f.fields[to], f.fields[from]];
+      render();
+      // Keep focus on the moved field: same direction if still possible,
+      // otherwise the opposite button of the same row.
+      const same = list.querySelector(
+        `[data-move="${k}:${to}"][data-dir="${move.dataset.dir}"]`,
+      );
+      const other = list.querySelector(
+        `[data-move="${k}:${to}"]:not([data-dir="${move.dataset.dir}"])`,
+      );
+      (same.disabled ? other : same).focus();
+    } else if (removeField) {
+      const [k, i] = split(removeField.dataset.removeField);
+      byKey(k).fields.splice(i, 1);
+      render(`[data-add-field="${k}"]`);
+    } else if (removeFeature) {
+      const f = byKey(removeFeature.dataset.removeFeature);
+      const index = drafts.indexOf(f);
+      drafts.splice(index, 1);
+      render();
+      form.querySelector("#add-feature").focus();
+      toast(
+        `Feature ${f.id.trim().toUpperCase() || "ohne ID"} entfernt. Es wird beim Speichern gelöscht.`,
+        () => {
+          drafts.splice(index, 0, f);
+          render(`#feature-${f.key} summary`);
+        },
+      );
+    }
+  });
+
+  form.querySelector("#add-feature").addEventListener("click", addFeature);
+
+  // ?feature=<ID> opens that feature, ?feature=neu starts a new one.
+  const target = drafts.find((f) => f.id === initial);
+  if (target) open.add(target.key);
+  render();
+  if (initial === "neu") {
+    addFeature();
+  } else if (target) {
+    document.getElementById(`feature-${target.key}`).scrollIntoView();
+  }
+
+  const validate = (problems) => {
+    const ids = new Set();
+    drafts.forEach((f, n) => {
+      const errors = [];
+      const name = f.id.trim().toUpperCase();
+      const label = name || `Feature ${n + 1}`;
+      const idInput = document.getElementById(`feature-${f.key}-id`);
+      let message = "";
+      if (!name) message = `Bitte geben Sie für Feature ${n + 1} eine ID ein.`;
+      else if (ids.has(name))
+        message = `Die Feature-ID ${name} kommt mehrfach vor.`;
+      ids.add(name);
+      setError(idInput, message);
+      if (message) errors.push({ id: idInput.id, message });
+
+      const description = document.getElementById(
+        `feature-${f.key}-description`,
+      );
+      message = f.description.trim()
+        ? ""
+        : `Bitte beschreiben Sie das Feature ${label}.`;
+      setError(description, message);
+      if (message) errors.push({ id: description.id, message });
+
+      const names = new Set();
+      f.fields.forEach((x, i) => {
+        const input = document.getElementById(
+          `feature-${f.key}-field-${i}-name`,
+        );
+        const fieldName = x.name.trim();
+        message = "";
+        if (!fieldName)
+          message = `Bitte geben Sie für Feld ${i + 1} von ${label} einen Namen ein.`;
+        else if (names.has(fieldName.toLowerCase()))
+          message = `Der Feldname „${fieldName}“ kommt in ${label} mehrfach vor.`;
+        names.add(fieldName.toLowerCase());
+        setError(input, message);
+        if (message) errors.push({ id: input.id, message });
+      });
+
+      if (errors.length) {
+        open.add(f.key);
+        form.querySelector(`details[data-feature="${f.key}"]`).open = true;
+        problems.push(...errors);
+      }
+    });
+  };
+
+  const serialize = () =>
+    drafts.map((f) => ({
+      id: f.id.trim().toUpperCase(),
+      description: f.description.trim(),
+      fields: f.fields.map((x) => ({ name: x.name.trim(), type: x.type })),
+    }));
+
+  return { validate, serialize };
+}
+
+// ---------------------------------------------------------------------------
 // Page: create / edit product
 // ---------------------------------------------------------------------------
 
 function renderProductForm(root) {
-  const id = new URLSearchParams(location.search).get("id");
+  const params = new URLSearchParams(location.search);
+  const id = params.get("id");
   const existing = id ? findProduct(id) : null;
   if (id && !existing) {
     root.innerHTML =
@@ -814,8 +1063,8 @@ function renderProductForm(root) {
       : [{ label: "Produkte", href: "index.html" }, { label: "Neu" }],
     title: existing ? "Produkt bearbeiten" : "Produkt anlegen",
     description: existing
-      ? "Ändern Sie Beschreibung, Preis, Verfügbarkeit, Links und Tags."
-      : "Legen Sie die Stammdaten an. Features fügen Sie danach auf der Produktseite hinzu.",
+      ? "Ändern Sie Stammdaten, Links, Tags und Features. Alles wird gemeinsam gespeichert."
+      : "Legen Sie Stammdaten und Features an. Alles wird gemeinsam gespeichert.",
   })}
   <form novalidate class="flex max-w-2xl flex-col gap-6">
     <div class="${CARD} flex flex-col gap-8 p-5 sm:p-6">
@@ -876,6 +1125,13 @@ function renderProductForm(root) {
         <datalist id="tag-suggestions">${allTags.map((t) => `<option value="${esc(t)}"></option>`).join("")}</datalist>
         <button type="button" id="add-tag" class="${btn("secondary")}">Hinzufügen</button>
       </div>
+    </fieldset>
+
+    <fieldset class="border-t border-line-subtle pt-6">
+      <legend class="float-left w-full text-base font-semibold text-ink">Features</legend>
+      <p class="clear-left pt-1 mb-3 text-sm text-ink-muted">Funktionen, die Kund:innen mit einem Lizenzschlüssel freischalten.</p>
+      <ol id="features" class="divide-y divide-line-subtle border-y border-line-subtle"></ol>
+      <button type="button" id="add-feature" class="${btn("ghost", BTN_COMPACT)} mt-3 -ml-3">${icon("plus")}Feature hinzufügen</button>
     </fieldset>
 
     </div>
@@ -981,6 +1237,12 @@ function renderProductForm(root) {
     }
   });
 
+  const features = bindFeatureEditor(
+    form,
+    draft.features,
+    params.get("feature"),
+  );
+
   // Validate on blur for single fields and on submit for everything.
   const checks = {
     "product-id": () => {
@@ -1024,6 +1286,7 @@ function renderProductForm(root) {
       setError(input, message);
       if (message) problems.push({ id: input.id, message });
     });
+    features.validate(problems);
     showErrorSummary(form, problems);
     if (problems.length) {
       return;
@@ -1031,6 +1294,7 @@ function renderProductForm(root) {
 
     const saved = {
       ...draft,
+      features: features.serialize(),
       id: idInput.value.trim().toUpperCase(),
       description: descriptionInput.value.trim(),
       price: parsePrice(priceInput.value),
@@ -1047,294 +1311,6 @@ function renderProductForm(root) {
 }
 
 // ---------------------------------------------------------------------------
-// Page: create / edit feature
-// ---------------------------------------------------------------------------
-
-function renderFeatureForm(root) {
-  const params = new URLSearchParams(location.search);
-  const product = findProduct(params.get("produkt"));
-  const featureId = params.get("feature");
-  const existing = featureId
-    ? product?.features.find((f) => f.id === featureId)
-    : null;
-  if (!product || (featureId && !existing)) {
-    root.innerHTML =
-      pageHeader({
-        crumbs: [{ label: "Produkte", href: "index.html" }],
-        title: "Feature",
-      }) + notFound(product ? "Das Feature" : "Das Produkt");
-    return;
-  }
-
-  const productHref = `produkt.html?id=${encodeURIComponent(product.id)}`;
-  const draft = existing
-    ? structuredClone(existing)
-    : { id: "", description: "", fields: [] };
-
-  root.innerHTML = `${pageHeader({
-    crumbs: [
-      { label: "Produkte", href: "index.html" },
-      { label: product.id, href: productHref },
-      { label: existing ? existing.id : "Neues Feature" },
-    ],
-    title: existing ? "Feature bearbeiten" : "Feature anlegen",
-    description: `Freischaltbare Funktion von ${esc(product.id)} und die Angaben, die bei der Freischaltung nötig sind.`,
-  })}
-  <form novalidate class="grid items-start gap-6 xl:grid-cols-[minmax(0,42rem)_minmax(20rem,28rem)]">
-    <div class="${CARD} flex flex-col gap-8 p-5 sm:p-6 xl:col-start-1 xl:row-start-1">
-      <div data-summary tabindex="-1" hidden class="scroll-mt-6 focus:outline-none"></div>
-      <fieldset class="flex flex-col gap-5">
-        <legend class="mb-5 text-base font-semibold text-ink">Feature</legend>
-        ${field({
-          id: "feature-id",
-          label: "ID",
-          required: true,
-          help: "Kurzer Code, höchstens 20 Zeichen, eindeutig innerhalb des Produkts.",
-          counter: `0 / ${ID_MAX}`,
-          control: `<input id="feature-id" required maxlength="${ID_MAX}" autocomplete="off" spellcheck="false" value="${esc(draft.id)}" aria-describedby="feature-id-help" class="${TEXT_INPUT} font-mono uppercase">`,
-        })}
-        ${field({
-          id: "feature-description",
-          label: "Beschreibung",
-          required: true,
-          counter: `0 / ${DESCRIPTION_MAX}`,
-          control: `<textarea id="feature-description" rows="3" required maxlength="${DESCRIPTION_MAX}" class="${INPUT} py-2">${esc(draft.description)}</textarea>`,
-        })}
-      </fieldset>
-
-      <fieldset class="border-t border-line-subtle pt-6">
-        <legend class="float-left w-full text-base font-semibold text-ink">Zusatzinformationen bei der Freischaltung</legend>
-        <p id="fields-help" class="clear-left pt-1 mb-4 text-sm text-ink-muted">Angaben, die bei jeder Freischaltung dieses Features eingegeben werden müssen, zum Beispiel eine Anzahl oder ein Datum „gültig bis“.</p>
-        <div class="mb-2 hidden grid-cols-[minmax(0,1fr)_10rem_7.5rem] gap-3 md:grid" aria-hidden="true">
-          <span class="text-xs font-semibold tracking-wider text-ink-muted uppercase">Feldname</span>
-          <span class="text-xs font-semibold tracking-wider text-ink-muted uppercase">Datentyp</span>
-        </div>
-        <ol id="fields" class="flex flex-col divide-y divide-line-subtle md:gap-3 md:divide-y-0"></ol>
-        <button type="button" id="add-field" class="${btn("ghost", BTN_COMPACT)} mt-3 -ml-3">${icon("plus")}Feld hinzufügen</button>
-      </fieldset>
-
-    </div>
-
-    <aside aria-labelledby="preview-title" class="${CARD} overflow-hidden xl:sticky xl:top-6 xl:col-start-2 xl:row-span-2 xl:row-start-1">
-      <div class="border-b border-line-subtle bg-surface-muted px-5 py-4 sm:px-6">
-        <h2 id="preview-title" class="text-base font-semibold text-ink">Vorschau der Freischaltung</h2>
-        <p class="mt-1 text-sm text-ink-muted">So fragt das Formular die Zusatzinformationen ab. Die Vorschau folgt Ihren Eingaben.</p>
-      </div>
-      <div class="px-5 py-5 sm:px-6">
-        <p class="mb-4 text-sm text-ink"><span class="text-ink-muted">Feature</span> <span id="preview-feature" class="font-mono font-medium"></span> <span class="text-ink-muted">für</span> <span class="font-mono font-medium">${esc(product.id)}</span></p>
-        <p id="preview-summary" class="sr-only"></p>
-        <div id="preview" inert class="flex flex-col gap-4"></div>
-      </div>
-    </aside>
-
-    <div class="flex flex-col-reverse gap-3 sm:flex-row sm:items-center xl:col-start-1 xl:row-start-2">
-      ${existing ? `<button type="button" id="delete-feature" class="${btn("danger")} sm:mr-auto">${icon("trash")}Feature löschen</button>` : ""}
-      <div class="flex flex-col-reverse gap-3 sm:ml-auto sm:flex-row">
-        <a href="${productHref}" class="${btn("secondary")}">Abbrechen</a>
-        <button type="submit" class="${btn("primary")}">${existing ? "Änderungen speichern" : "Feature anlegen"}</button>
-      </div>
-    </div>
-  </form>`;
-
-  const form = root.querySelector("form");
-  const idInput = form.querySelector("#feature-id");
-  const descriptionInput = form.querySelector("#feature-description");
-  bindCounter(idInput, ID_MAX);
-  bindCounter(descriptionInput, DESCRIPTION_MAX);
-
-  const fieldList = form.querySelector("#fields");
-  const preview = root.querySelector("#preview");
-  let freshIndex = -1;
-
-  const renderPreview = () => {
-    root.querySelector("#preview-feature").textContent =
-      idInput.value.trim().toUpperCase() || "Neues Feature";
-    root.querySelector("#preview-summary").textContent = draft.fields.length
-      ? `Die Freischaltung fragt ${plural(draft.fields.length, "Angabe", "Angaben")} ab: ${draft.fields.map((f) => `${f.name || "Unbenanntes Feld"} (${FIELD_TYPES[f.type].label})`).join(", ")}.`
-      : "Die Freischaltung fragt keine Zusatzinformationen ab.";
-    preview.innerHTML = draft.fields.length
-      ? draft.fields
-          .map((f, i) => {
-            const control = {
-              text: `<input type="text" class="${TEXT_INPUT}">`,
-              integer: `<input type="number" step="1" class="${TEXT_INPUT} text-right tabular-nums sm:max-w-40">`,
-              date: `<input type="date" class="${TEXT_INPUT} sm:max-w-48">`,
-            }[f.type];
-            return `<div class="flex flex-col gap-1.5 ${i === freshIndex ? "motion-safe:animate-appear" : ""}">
-              <span class="flex items-center gap-2 text-sm font-medium ${f.name.trim() ? "text-ink" : "text-ink-subtle"}">${esc(f.name.trim() || "Unbenanntes Feld")} <span aria-hidden="true" class="text-danger">*</span></span>
-              <span class="flex items-center gap-1.5 text-xs text-ink-muted">${icon(FIELD_TYPES[f.type].icon, 12)}${FIELD_TYPES[f.type].label}</span>
-              ${control}
-            </div>`;
-          })
-          .join("")
-      : '<p class="rounded-control border border-dashed border-line px-4 py-6 text-center text-sm text-ink-muted">Keine Zusatzinformationen. Das Feature wird ohne weitere Angaben freigeschaltet.</p>';
-  };
-
-  const renderFields = (focusSelector) => {
-    const last = draft.fields.length - 1;
-    fieldList.innerHTML = draft.fields.length
-      ? draft.fields
-          .map(
-            (
-              f,
-              i,
-            ) => `<li class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-3 gap-y-2 py-4 first:pt-0 md:grid-cols-[minmax(0,1fr)_10rem_7.5rem] md:py-0">
-          <div class="col-span-2 flex flex-col gap-1.5 md:col-span-1">
-            <label for="field-name-${i}" class="text-sm font-medium text-ink md:sr-only">Feldname<span class="sr-only"> ${i + 1}</span></label>
-            <input id="field-name-${i}" data-name="${i}" value="${esc(f.name)}" placeholder="zum Beispiel Anzahl Benutzer:innen" autocomplete="off" aria-describedby="fields-help" class="${TEXT_INPUT}">
-            <p id="field-name-${i}-error" class="hidden items-center gap-1.5 text-sm text-danger">${icon("alert")}<span></span></p>
-          </div>
-          <div class="flex flex-col gap-1.5">
-            <label for="field-type-${i}" class="text-sm font-medium text-ink md:sr-only">Datentyp<span class="sr-only"> von Feld ${i + 1}</span></label>
-            <select id="field-type-${i}" data-type="${i}" class="${TEXT_INPUT}">
-              ${Object.entries(FIELD_TYPES)
-                .map(
-                  ([value, t]) =>
-                    `<option value="${value}" ${value === f.type ? "selected" : ""}>${t.label}</option>`,
-                )
-                .join("")}
-            </select>
-          </div>
-          <div class="flex self-end md:self-start">
-            <button type="button" data-move="${i}" data-dir="-1" class="${ICON_BTN}" aria-label="Feld ${i + 1} nach oben" title="Nach oben" ${i === 0 ? "disabled" : ""}>${icon("arrowUp")}</button>
-            <button type="button" data-move="${i}" data-dir="1" class="${ICON_BTN}" aria-label="Feld ${i + 1} nach unten" title="Nach unten" ${i === last ? "disabled" : ""}>${icon("arrowDown")}</button>
-            <button type="button" data-remove-field="${i}" class="${ICON_BTN}" aria-label="Feld ${i + 1} entfernen" title="Entfernen">${icon("trash")}</button>
-          </div>
-        </li>`,
-          )
-          .join("")
-      : "";
-    if (focusSelector) {
-      fieldList.querySelector(focusSelector)?.focus();
-    }
-    renderPreview();
-    freshIndex = -1;
-  };
-  renderFields();
-
-  idInput.addEventListener("input", renderPreview);
-  fieldList.addEventListener("input", (event) => {
-    const { name } = event.target.dataset;
-    if (name !== undefined) {
-      draft.fields[Number(name)].name = event.target.value;
-      renderPreview();
-    }
-  });
-  fieldList.addEventListener("change", (event) => {
-    const { type } = event.target.dataset;
-    if (type !== undefined) {
-      draft.fields[Number(type)].type = event.target.value;
-      renderPreview();
-    }
-  });
-  fieldList.addEventListener("click", (event) => {
-    const move = event.target.closest("[data-move]");
-    const remove = event.target.closest("[data-remove-field]");
-    if (move) {
-      const from = Number(move.dataset.move);
-      const to = from + Number(move.dataset.dir);
-      [draft.fields[from], draft.fields[to]] = [
-        draft.fields[to],
-        draft.fields[from],
-      ];
-      renderFields();
-      // Keep focus on the moved field: same direction if still possible,
-      // otherwise the opposite button of the same row.
-      const same = fieldList.querySelector(
-        `[data-move="${to}"][data-dir="${move.dataset.dir}"]`,
-      );
-      const other = fieldList.querySelector(
-        `[data-move="${to}"]:not([data-dir="${move.dataset.dir}"])`,
-      );
-      (same.disabled ? other : same).focus();
-    }
-    if (remove) {
-      draft.fields.splice(Number(remove.dataset.removeField), 1);
-      renderFields();
-      form.querySelector("#add-field").focus();
-    }
-  });
-  form.querySelector("#add-field").addEventListener("click", () => {
-    draft.fields.push({ name: "", type: "text" });
-    freshIndex = draft.fields.length - 1;
-    renderFields(`#field-name-${draft.fields.length - 1}`);
-  });
-
-  const checks = {
-    "feature-id": () => {
-      const value = idInput.value.trim().toUpperCase();
-      if (!value) return "Bitte geben Sie eine ID ein.";
-      if (
-        value !== existing?.id &&
-        product.features.some((f) => f.id === value)
-      )
-        return `${product.id} hat bereits ein Feature mit der ID ${value}.`;
-      return "";
-    },
-    "feature-description": () =>
-      descriptionInput.value.trim() ? "" : "Bitte beschreiben Sie das Feature.",
-  };
-  for (const [inputId, check] of Object.entries(checks)) {
-    const input = form.querySelector(`#${inputId}`);
-    input.addEventListener("blur", () => setError(input, check()));
-  }
-
-  form.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const problems = [];
-    for (const [inputId, check] of Object.entries(checks)) {
-      const message = check();
-      setError(form.querySelector(`#${inputId}`), message);
-      if (message) problems.push({ id: inputId, message });
-    }
-    const seen = new Set();
-    draft.fields.forEach((f, i) => {
-      const input = form.querySelector(`#field-name-${i}`);
-      const name = f.name.trim();
-      let message = "";
-      if (!name) {
-        message = `Bitte geben Sie für Feld ${i + 1} einen Namen ein.`;
-      } else if (seen.has(name.toLowerCase())) {
-        message = `Der Feldname „${name}“ kommt mehrfach vor.`;
-      }
-      seen.add(name.toLowerCase());
-      setError(input, message);
-      if (message) problems.push({ id: input.id, message });
-    });
-    showErrorSummary(form, problems);
-    if (problems.length) {
-      return;
-    }
-
-    const saved = {
-      id: idInput.value.trim().toUpperCase(),
-      description: descriptionInput.value.trim(),
-      fields: draft.fields.map((f) => ({ name: f.name.trim(), type: f.type })),
-    };
-    if (existing) {
-      Object.assign(existing, saved);
-    } else {
-      product.features.push(saved);
-    }
-    saveProducts(products);
-    location.href = `${productHref}&meldung=${existing ? "feature-gespeichert" : "feature-angelegt"}&name=${encodeURIComponent(saved.id)}`;
-  });
-
-  root.querySelector("#delete-feature")?.addEventListener("click", () =>
-    confirmDialog({
-      title: `Feature ${existing.id} löschen?`,
-      body: `Das Feature <span class="font-mono text-ink">${esc(existing.id)}</span> wird endgültig aus <span class="font-mono text-ink">${esc(product.id)}</span> entfernt. Das lässt sich nicht rückgängig machen.`,
-      confirmLabel: "Feature löschen",
-      onConfirm: () => {
-        product.features = product.features.filter((f) => f !== existing);
-        saveProducts(products);
-        location.href = `${productHref}&meldung=feature-geloescht&name=${encodeURIComponent(existing.id)}`;
-      },
-    }),
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
@@ -1342,7 +1318,6 @@ const PAGES = {
   list: renderList,
   detail: renderDetail,
   "product-form": renderProductForm,
-  "feature-form": renderFeatureForm,
 };
 
 renderShell();
